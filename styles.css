@@ -811,3 +811,7 @@ button.stat:active { transform: scale(.97); }
 .tl-node::before { content: ""; position: absolute; inset: 3.5px; border-radius: 50%; background: var(--bg); }
 /* Ordenador: más aire bajo el calendario */
 @media (min-width: 900px) { .home-side { padding-bottom: 72px; } }
+
+/* Listas desplazables: que no se corten los círculos ni el último recordatorio */
+.cal-list, .home-main.scroll { padding-left: 8px !important; margin-left: -8px !important; padding-right: 2px; padding-bottom: calc(28px + var(--safe-b)) !important; }
+.cal-list { padding-top: 6px; }

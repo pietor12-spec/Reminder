@@ -598,6 +598,8 @@ function countdown(ms) {
 
 let homeFilter = 'next';
 const isDesktop = () => matchMedia('(min-width: 900px)').matches;
+// Alto visible de verdad (sin barras del navegador ni del sistema)
+const viewH = () => Math.min(window.innerHeight, (window.visualViewport && window.visualViewport.height) || window.innerHeight, document.documentElement.clientHeight || window.innerHeight);
 // Recordatorios pendientes de un rango, agrupados por día: [etiqueta, [{r, at}], clase]
 function dayGroups(s, e, { includeDone = false } = {}) {
   const map = new Map();
@@ -760,7 +762,7 @@ function fitHome() {
   // El título de la tarjeta en una sola línea: reduce la letra hasta que quepa
   const main = $('#view-home .home-main');
   if (!main || query || $('#app').hidden) return;
-  const fabTop = window.innerHeight - 12;
+  const fabTop = viewH() - 16;
   main.style.maxHeight = Math.max(120, fabTop - 4 - main.getBoundingClientRect().top) + 'px'; return;
   main.style.maxHeight = '';
   const wraps = $$('.item-wrap', main);
@@ -851,7 +853,7 @@ function renderCalendar() {
       ${groups.length ? tlHTML(groups, selKey) : `<p class="empty-mini">Nada en ${monthName.toLowerCase()}.</p>`}
     </div>
   </div>`;
-  requestAnimationFrame(() => { const l = $('#view-calendar .cal-list'); if (l) l.style.maxHeight = Math.max(140, window.innerHeight - 8 - l.getBoundingClientRect().top) + 'px'; });
+  requestAnimationFrame(() => { const l = $('#view-calendar .cal-list'); if (l) l.style.maxHeight = Math.max(140, viewH() - 16 - l.getBoundingClientRect().top) + 'px'; });
 }
 function scrollToSelDay() {
   const g = $(`#view-calendar [data-gday="${ymd(calSel)}"]`) || $(`#view-home [data-gday="${ymd(calSel)}"]`);
@@ -1756,7 +1758,9 @@ function boot() {
     setTimeout(() => splash.remove(), 500);
     showTomorrow();
     checkAlarms(); render();
-    window.addEventListener('resize', () => { if (tab === 'home') renderHome(); });
+    const refit = () => { if (tab === 'home') renderHome(); else if (tab === 'calendar') renderCalendar(); };
+    window.addEventListener('resize', refit);
+    window.visualViewport?.addEventListener('resize', refit);
     const a = params.get('action'), id = params.get('id');
     if (a && id) { a === 'snooze' ? snooze(id) : a === 'done' ? completeReminder(id) : openSheet({ id }); history.replaceState(null, '', location.pathname); }
     if (params.get('new')) { openSheet(); history.replaceState(null, '', location.pathname); }
