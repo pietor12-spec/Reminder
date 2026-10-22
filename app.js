@@ -763,7 +763,8 @@ function fitHome() {
   const main = $('#view-home .home-main');
   if (!main || query || $('#app').hidden) return;
   const fabTop = viewH() - 16;
-  main.style.maxHeight = Math.max(120, fabTop - 4 - main.getBoundingClientRect().top) + 'px'; return;
+  if (isDesktop()) { main.style.maxHeight = Math.max(120, fabTop - 4 - main.getBoundingClientRect().top) + 'px'; return; }
+  fitList(main); return;
   main.style.maxHeight = '';
   const wraps = $$('.item-wrap', main);
   // Cabe hasta justo encima del botón +; lo demás está en la pestaña Recordatorios
@@ -853,7 +854,21 @@ function renderCalendar() {
       ${groups.length ? tlHTML(groups, selKey) : `<p class="empty-mini">Nada en ${monthName.toLowerCase()}.</p>`}
     </div>
   </div>`;
-  requestAnimationFrame(() => { const l = $('#view-calendar .cal-list'); if (l) l.style.maxHeight = Math.max(140, viewH() - 16 - l.getBoundingClientRect().top) + 'px'; });
+  requestAnimationFrame(() => fitList($('#view-calendar .cal-list')));
+}
+// Ajusta la lista al hueco libre cortando justo después del último recordatorio que cabe entero
+function fitList(l) {
+  if (!l) return;
+  l.style.maxHeight = '';
+  const top = l.getBoundingClientRect().top;
+  const avail = Math.max(140, viewH() - 14 - top);
+  if (l.scrollHeight <= avail) { l.style.maxHeight = avail + 'px'; return; }
+  let h = 0;
+  for (const w of $$('.item-wrap', l)) {
+    const b = w.getBoundingClientRect().bottom - top + l.scrollTop + 4;
+    if (b <= avail) h = b; else break;
+  }
+  l.style.maxHeight = (h || avail) + 'px';
 }
 function scrollToSelDay() {
   const g = $(`#view-calendar [data-gday="${ymd(calSel)}"]`) || $(`#view-home [data-gday="${ymd(calSel)}"]`);

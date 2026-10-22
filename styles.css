@@ -847,3 +847,22 @@ button.stat:active { transform: scale(.97); }
   .home-cal .cal-head h2 { font-size: 20px; }
   .home-side { padding-bottom: 14px !important; }
 }
+
+/* ===== Móvil: Calendario compacto para que quepan 4 movimientos enteros ===== */
+@media (max-width: 899px) {
+  #view-calendar .cal-card { padding: 8px 10px 4px; border-radius: 18px; }
+  #view-calendar .cal-head { margin-bottom: 0; }
+  #view-calendar .cal-head h2 { font-size: 18px; }
+  #view-calendar .cal-head .icon-btn { width: 32px; height: 32px; }
+  #view-calendar .pill-btn { padding: 4px 10px; }
+  #view-calendar .cal-grid .dow { padding: 0 0 2px; font-size: 10.5px; }
+  #view-calendar .day { height: 31px; }
+  #view-calendar .day .num { width: 28px; height: 28px; font-size: 13.5px; }
+  #view-calendar .cal-list { margin-top: 10px; padding-bottom: 6px !important; }
+  /* movimientos algo más compactos (también en Inicio) */
+  .tl-item { padding: 12px 16px; }
+  .tl-day { margin-bottom: 6px; }
+  .tl .list { gap: 8px; margin-bottom: 8px; }
+  .home-main.scroll { padding-bottom: 6px !important; }
+}
+.cal-list { overflow-y: auto; -webkit-overflow-scrolling: touch; }
