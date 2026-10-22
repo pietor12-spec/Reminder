@@ -2,7 +2,7 @@
 
 Recordatorios simples y elegantes. Funciona en cualquier navegador y dispositivo, se instala como app y trabaja sin conexión.
 
-**Abrir:** https://pietor12-spec.github.io/reminder/
+**Abrir:** https://pietor12-spec.github.io/Reminder/
 
 ## Qué hace
 - **Escribe natural:** «Llamar al dentista mañana a las 10», «Pagar el alquiler el 1 cada mes», «Sacar la basura cada martes a las 9 de la noche». Reminder entiende la fecha, la hora y la repetición.
