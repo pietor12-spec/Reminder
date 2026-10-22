@@ -29,7 +29,7 @@
       } catch (e) { document.documentElement.dataset.theme = 'dark'; }
     })();
   </script>
-  <link rel="stylesheet" href="styles.css?v=21">
+  <link rel="stylesheet" href="styles.css?v=22">
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -132,7 +132,7 @@
             <input type="time" id="fTime" required><span class="ph">Elige hora</span></label>
         </div>
         <div class="chips scroll-x" id="dateChips"></div>
-        <div class="chips scroll-x" id="timeChips"></div>
+<div id="timeChips" hidden></div>
       </div>
 
       <div class="grid2">
@@ -183,6 +183,6 @@
   <div id="toasts" aria-live="polite"></div>
   <input type="file" id="importFile" accept="application/json,.json,text/plain,.txt" hidden>
 
-  <script src="app.js?v=21"></script>
+  <script src="app.js?v=22"></script>
 </body>
 </html>

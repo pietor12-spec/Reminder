@@ -1239,11 +1239,11 @@ const paintCats = () => { $$('#catPicker button').forEach(b => b.classList.toggl
 function dateChipDefs() {
   const t = startOfDay(new Date());
   const sat = addDays(t, ((6 - t.getDay() + 7) % 7) || 7);
-  return [['Hoy', t], ['Mañana', addDays(t, 1)], ['Este finde', sat], ['+1 semana', addDays(t, 7)]];
+  return [['Hoy', t], ['Mañana', addDays(t, 1)]];
 }
 function paintChips() {
   $('#dateChips').innerHTML = dateChipDefs().map(([l, d]) => `<button type="button" data-d="${ymd(d)}" class="${f.date.value === ymd(d) ? 'on' : ''}">${l}</button>`).join('');
-  $('#timeChips').innerHTML = ['09:00', '13:00', '18:00', '21:00'].map(t => `<button type="button" data-t="${t}" class="${f.time.value === t ? 'on' : ''}">${t}</button>`).join('');
+
 }
 $('#dateChips').addEventListener('click', e => { const b = e.target.closest('[data-d]'); if (b) { f.date.value = b.dataset.d; manual.date = true; paintChips(); updateReady(); } });
 $('#timeChips').addEventListener('click', e => { const b = e.target.closest('[data-t]'); if (b) { f.time.value = b.dataset.t; manual.time = true; paintChips(); updateReady(); } });
