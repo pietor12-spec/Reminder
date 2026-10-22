@@ -600,13 +600,13 @@ function fitHome() {
   const main = $('#view-home .home-main');
   if (!main || query || $('#app').hidden) return;
   const wraps = $$('.item-wrap', main);
-  if (wraps.length < 3) return;
-  const limit = window.innerHeight - 150; // deja sitio para el botón + y «Ver todos»
+  // Cabe hasta justo encima del botón +; lo demás está en la pestaña Recordatorios
+  const fab = $('#fab').getBoundingClientRect();
+  const limit = (fab.top > 0 ? fab.top : window.innerHeight - 110) - 6;
   const bottoms = wraps.map(w => w.getBoundingClientRect().bottom + window.scrollY);
-  let hidden = 0;
-  wraps.forEach((w, i) => { if (i >= 2 && bottoms[i] > limit) { w.hidden = true; hidden++; } });
+  let cut = false;
+  wraps.forEach((w, i) => { if (cut || (i >= 1 && bottoms[i] > limit)) { w.hidden = true; cut = true; } });
   $$('.group', main).forEach(g => { if (!$$('.item-wrap:not([hidden])', g).length) g.hidden = true; });
-  if (hidden) main.insertAdjacentHTML('beforeend', `<button class="see-all" data-goto="list">Ver todos los recordatorios <b>${pending().length}</b> ${ICON.right}</button>`);
 }
 
 /* ---------- Render: Recordatorios (todos, con filtro) ---------- */
@@ -820,7 +820,13 @@ function renderSettings() {
 
 /* ---------- Render global ---------- */
 let heroTimer;
+function lockHome() {
+  const lock = tab === 'home' && !query && !document.body.classList.contains('sheet-open');
+  document.documentElement.classList.toggle('lock', lock);
+  if (lock && window.scrollY) window.scrollTo(0, 0);
+}
 function render() {
+  lockHome();
   if (tab === 'home') renderHome();
   else if (tab === 'calendar') renderCalendar();
   else if (tab === 'list') renderList();
