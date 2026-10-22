@@ -1234,7 +1234,7 @@ let editing = null, cat = 'personal', manual = {}, lastParse = null;
 
 $('#catPicker').innerHTML = CATS.map(c => `<button type="button" data-cat="${c.id}" style="--c:${catColor(c.id)}"><i></i>${c.name}</button>`).join('');
 $('#catPicker').addEventListener('click', e => { const b = e.target.closest('[data-cat]'); if (b) { cat = b.dataset.cat; manual.cat = true; paintCats(); } });
-const paintCats = () => $$('#catPicker button').forEach(b => b.classList.toggle('on', b.dataset.cat === cat));
+const paintCats = () => { $$('#catPicker button').forEach(b => b.classList.toggle('on', b.dataset.cat === cat)); const on = $('#catPicker .on'); if (on) { const p = $('#catPicker'); p.scrollTo({ left: Math.max(0, on.offsetLeft - p.clientWidth / 2 + on.offsetWidth / 2), behavior: 'smooth' }); } };
 
 function dateChipDefs() {
   const t = startOfDay(new Date());
@@ -1299,6 +1299,7 @@ function onTitleInput() {
   paintChips(); updateReady();
 }
 f.title.addEventListener('input', onTitleInput);
+f.notes.addEventListener('input', () => { f.notes.style.height = 'auto'; f.notes.style.height = Math.min(f.notes.scrollHeight, 120) + 'px'; });
 
 function openSheet({ id, date, text } = {}) {
   unlockAudio();

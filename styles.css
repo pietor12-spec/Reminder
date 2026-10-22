@@ -634,3 +634,34 @@ button.stat:active { transform: scale(.97); }
 
 .settings .seg { flex-wrap: nowrap; }
 .txt-box { white-space: pre; overflow: auto; }
+
+/* Hoja de añadir: compacta */
+#sheet .sheet-head { padding: 10px 16px 4px; }
+#sheet .sheet-body { padding: 2px 16px 14px; }
+#sheet .title-input { font-size: 20px; padding: 4px 0; }
+#sheet .mic-btn { width: 40px; height: 40px; }
+#sheet .nl-hint { font-size: 12px; }
+#sheet .notes-input { padding: 8px 12px; margin: 6px 0 4px; min-height: 38px; font-size: 14px; }
+#sheet .field { padding: 9px 0; }
+#sheet .field > label { margin-bottom: 6px; font-size: 12.5px; }
+#sheet .field select { min-height: 40px; padding: 8px 32px 8px 12px; }
+#sheet .grid2 { gap: 10px; }
+.when-grid { display: grid; grid-template-columns: 1.25fr 1fr; gap: 10px; }
+.when-grid .inp { position: relative; display: flex; flex-direction: column; gap: 5px; margin: 0; }
+.when-grid .lbl { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--muted); }
+.when-grid .lbl svg { width: 15px; height: 15px; }
+#sheet .when-grid input { min-height: 40px; padding: 8px 10px; font-size: 15px; }
+.when-grid .ph { position: absolute; left: 11px; bottom: 11px; font-size: 14px; font-weight: 600; color: var(--faint); pointer-events: none; display: none; }
+.when-grid input.need + .ph { display: block; }
+.when-grid input.need { color: transparent; }
+.when-grid input.need:focus { color: inherit; }
+.when-grid input.need:focus + .ph { display: none; }
+.chips.scroll-x, .cats.scroll-x { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 8px -16px 0; padding: 0 16px; }
+.chips.scroll-x::-webkit-scrollbar, .cats.scroll-x::-webkit-scrollbar { display: none; }
+.chips.scroll-x button, .cats.scroll-x button { flex: none; }
+#sheet .chips { margin-bottom: 0; }
+#sheet .chips button { padding: 6px 11px; font-size: 12.5px; }
+#sheet .cats button { padding: 6px 11px; font-size: 12.5px; }
+#sheet .toggle-row { padding: 10px 0; }
+#sheet .when-grid .inp { align-items: stretch; margin: 0; }
+#sheet .when-grid .lbl { justify-content: flex-start; }
