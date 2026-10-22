@@ -521,3 +521,17 @@ html.lock main { padding-bottom: 0; }
 button.stat { text-align: left; cursor: pointer; transition: border-color .2s, transform .15s; }
 button.stat:hover { border-color: var(--brand-2); }
 button.stat:active { transform: scale(.97); }
+
+/* Tarjeta principal: día y hora en grande */
+.hero .hero-date { position: relative; z-index: 1; font-size: 24px; font-weight: 800; letter-spacing: -.01em; line-height: 1.15; }
+.hero h2 small { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 8px; background: rgba(255,255,255,.22); font-size: 12px; font-weight: 700; vertical-align: middle; }
+#view-home .hero .hero-date { font-size: 23px; }
+#view-home .hero h2 { margin: 6px 0 0; font-size: 18px; font-weight: 700; opacity: .95; }
+
+/* Filtros de Inicio */
+#view-home .stat.on { background: var(--brand); border-color: transparent; color: #fff; box-shadow: 0 6px 16px rgba(255,107,74,.28); }
+#view-home .stat.on span { color: rgba(255,255,255,.9); }
+#view-home .stat span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.home-main.scroll { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding-bottom: 8px; scrollbar-width: none; }
+.home-main.scroll::-webkit-scrollbar { display: none; }
+.empty-mini { text-align: center; color: var(--muted); padding: 24px 0; margin: 0; }

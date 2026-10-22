@@ -34,8 +34,17 @@ function dayLabel(d, now = new Date()) {
   if (diff === 0) return 'Hoy';
   if (diff === 1) return 'Mañana';
   if (diff === -1) return 'Ayer';
-  if (diff > 1 && diff < 7) return d.toLocaleDateString('es-ES', { weekday: 'long' }).replace(/^./, c => c.toUpperCase());
+  if (diff > 1 && diff < 7) return d.toLocaleDateString('es-ES', { weekday: 'long' }).replace(/^./, c => c.toUpperCase()) + ' ' + d.getDate();
   return fmtShort(d);
+}
+// «Sábado 25», «Hoy, jueves 22», «Lunes 9 nov»
+function dayFull(d, now = new Date()) {
+  const wd = cap(d.toLocaleDateString('es-ES', { weekday: 'long' }));
+  const diff = Math.round((startOfDay(d) - startOfDay(now)) / DAY);
+  const tail = d.getMonth() !== now.getMonth() || Math.abs(diff) > 27 ? ' ' + d.toLocaleDateString('es-ES', { month: 'short' }).replace('.', '') : '';
+  if (diff === 0) return `Hoy, ${wd.toLowerCase()} ${d.getDate()}`;
+  if (diff === 1) return `Mañana, ${wd.toLowerCase()} ${d.getDate()}`;
+  return `${wd} ${d.getDate()}${tail}`;
 }
 function relLabel(ms, now = Date.now()) {
   const diff = ms - now, a = Math.abs(diff);
@@ -522,6 +531,7 @@ function countdown(ms) {
   return `${pad(m)}:${pad(s)}`;
 }
 
+let homeFilter = 'next';
 function renderHome() {
   const v = $('#view-home');
   const now = Date.now(), today0 = +startOfDay(new Date()), tomorrow0 = +addDays(startOfDay(new Date()), 1);
@@ -541,7 +551,6 @@ function renderHome() {
   // Hoy · semana natural (lunes a domingo) · mes natural, contando también las repeticiones
   const countIn = (s, e) => state.reminders.reduce((n, r) => n + (r.done ? 0 : occurrencesBetween(r, +s, +e).length), 0);
   const t0 = startOfDay(new Date()), w0 = addDays(t0, -((t0.getDay() + 6) % 7));
-  const todayCount = countIn(t0, addDays(t0, 1));
   const weekCount = countIn(w0, addDays(w0, 7));
   const monthCount = countIn(new Date(t0.getFullYear(), t0.getMonth(), 1), new Date(t0.getFullYear(), t0.getMonth() + 1, 1));
 
@@ -549,9 +558,8 @@ function renderHome() {
   if (next) {
     hero = `<div class="hero" data-id="${next.id}" data-act="edit">
       <svg class="hero-bell" viewBox="0 0 512 512"><use href="#bell"/></svg>
-      <div class="eyebrow">Lo próximo</div>
-      <h2>${esc(next.title)}</h2>
-      <div class="when">${dayLabel(new Date(next.due))} · ${fmtTime(new Date(next.due))}${next.repeat !== 'none' && next.repeat ? ' · ' + REPEAT_LABEL[next.repeat] : ''}</div>
+      <div class="hero-date">${dayFull(new Date(next.due))} · ${fmtTime(new Date(next.due))}</div>
+      <h2>${esc(next.title)}${next.repeat !== 'none' && next.repeat ? `<small>${REPEAT_LABEL[next.repeat]}</small>` : ''}</h2>
       <div class="count"><span style="opacity:.8;font-weight:600">Faltan</span> <span id="heroCount">${countdown(next.due)}</span></div>
     </div>`;
   } else {
@@ -563,17 +571,34 @@ function renderHome() {
     </div>`;
   }
 
-  const groups = [
+  let groups = [
     ['Atrasados', overdue, 'overdue'],
     ['Hoy', upcoming.filter(r => r.due < tomorrow0)],
     ['Mañana', upcoming.filter(r => r.due >= tomorrow0 && r.due < tomorrow0 + DAY)],
     ['Próximos 7 días', upcoming.filter(r => r.due >= tomorrow0 + DAY && r.due < today0 + 8 * DAY)],
     ['Más adelante', upcoming.filter(r => r.due >= today0 + 8 * DAY)],
-  ].filter(g => g[1].length);
+  ].filter(g => g[1].length).map(([t, arr, cls]) => [t, arr.sort(sortRem).map(r => ({ r, at: r.due,
+      showDay: !['Hoy', 'Mañana', 'Atrasados'].includes(t) || (t === 'Atrasados' && !sameDay(new Date(r.due), new Date())) })), cls]);
+
+  if (homeFilter !== 'next') {
+    const s = homeFilter === 'week' ? w0 : new Date(t0.getFullYear(), t0.getMonth(), 1);
+    const e = homeFilter === 'week' ? addDays(w0, 7) : new Date(t0.getFullYear(), t0.getMonth() + 1, 1);
+    const map = new Map();
+    for (const r of state.reminders) {
+      if (r.done) continue;
+      for (const t of occurrencesBetween(r, +s, +e)) {
+        const k = ymd(new Date(t)); if (!map.has(k)) map.set(k, []);
+        map.get(k).push({ r, at: t, virtual: t !== r.due });
+      }
+    }
+    groups = [...map.entries()].sort((x, y) => x[0] < y[0] ? -1 : 1)
+      .map(([k, arr]) => [dayFull(new Date(k + 'T12:00')), arr.sort((p, q) => p.at - q.at), new Date(k + 'T23:59') < new Date() ? 'overdue' : '']);
+  }
 
   const lists = groups.length ? groups.map(([t, arr, cls]) => `
     <div class="group"><div class="group-title ${cls || ''}">${t}</div>
-    <div class="list">${arr.sort(sortRem).map(r => itemHTML(r, r.due, { showDay: !['Hoy', 'Mañana', 'Atrasados'].includes(t) || (t === 'Atrasados' && !sameDay(new Date(r.due), new Date())) })).join('')}</div></div>`).join('')
+    <div class="list">${arr.map(o => itemHTML(o.r, o.at, { showDay: o.showDay, virtual: o.virtual })).join('')}</div></div>`).join('')
+    : homeFilter !== 'next' ? `<p class="empty-mini">Nada ${homeFilter === 'week' ? 'esta semana' : 'este mes'}.</p>`
     : `<div class="empty">
         <span class="app-icon"><svg><use href="#bell"/></svg></span>
         <h3>Tu lista está vacía</h3>
@@ -590,12 +615,12 @@ function renderHome() {
       <div class="greet"><h1>${greeting()}</h1><p>${fmtLong(new Date())}</p></div>
       ${hero}
       <div class="stats">
-        <button class="stat" data-period="day"><b>${todayCount}</b><span>Hoy</span></button>
-        <button class="stat" data-period="week"><b>${weekCount}</b><span>Semanal</span></button>
-        <button class="stat" data-period="month"><b>${monthCount}</b><span>Mensual</span></button>
+        <button class="stat${homeFilter === 'next' ? ' on' : ''}" data-hf="next"><b>${list.length}</b><span>Lo próximo</span></button>
+        <button class="stat${homeFilter === 'week' ? ' on' : ''}" data-hf="week"><b>${weekCount}</b><span>Semanal</span></button>
+        <button class="stat${homeFilter === 'month' ? ' on' : ''}" data-hf="month"><b>${monthCount}</b><span>Mensual</span></button>
       </div>
     </div>
-    <div class="home-main">${lists}</div>
+    <div class="home-main${homeFilter !== 'next' ? ' scroll' : ''}">${lists}</div>
   </div>`;
   requestAnimationFrame(fitHome);
 }
@@ -603,6 +628,9 @@ function renderHome() {
 function fitHome() {
   const main = $('#view-home .home-main');
   if (!main || query || $('#app').hidden) return;
+  const fabTop = $('#fab').getBoundingClientRect().top || window.innerHeight - 110;
+  if (homeFilter !== 'next') { main.style.maxHeight = Math.max(160, fabTop - 10 - main.getBoundingClientRect().top) + 'px'; return; }
+  main.style.maxHeight = '';
   const wraps = $$('.item-wrap', main);
   // Cabe hasta justo encima del botón +; lo demás está en la pestaña Recordatorios
   const fab = $('#fab').getBoundingClientRect();
@@ -877,8 +905,8 @@ $('#views').addEventListener('click', e => {
     else if (a === 'edit' && id) openSheet({ id });
     return;
   }
-  const per = t.closest('[data-period]');
-  if (per) { listMode = per.dataset.period; listAnchor = startOfDay(new Date()); setTab('list'); return; }
+  const hf = t.closest('[data-hf]');
+  if (hf) { homeFilter = hf.dataset.hf; renderHome(); return; }
   const go = t.closest('[data-goto]');
   if (go) { if (go.dataset.goto === 'list') listMode = 'all'; setTab(go.dataset.goto); return; }
   const lm = t.closest('[data-lmode]');
