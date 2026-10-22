@@ -665,3 +665,36 @@ button.stat:active { transform: scale(.97); }
 #sheet .toggle-row { padding: 10px 0; }
 #sheet .when-grid .inp { align-items: stretch; margin: 0; }
 #sheet .when-grid .lbl { justify-content: flex-start; }
+
+/* ===== Tarjeta principal: hoja de calendario ===== */
+#view-home .hero.hero2 { display: flex; flex-direction: row; align-items: center; gap: 18px; padding: 22px 20px; min-height: 178px; border-radius: 26px; }
+#view-home .hero.hero2::after { right: -60px; top: -60px; width: 220px; height: 220px; }
+.cal-leaf { width: 88px; flex: none; border-radius: 18px; overflow: hidden; background: rgba(255,255,255,.97); color: #1a1f2b; text-align: center; box-shadow: 0 8px 20px rgba(120,40,0,.18); position: relative; z-index: 1; }
+.cal-leaf i { display: block; background: #1a1f2b; color: #fff; font-style: normal; font-size: 12px; font-weight: 800; letter-spacing: .14em; padding: 5px 0; }
+.cal-leaf b { display: block; font-size: 42px; font-weight: 800; line-height: 1.08; padding-top: 4px; letter-spacing: -.02em; }
+.cal-leaf small { display: block; color: #6f7480; font-weight: 700; font-size: 11px; padding: 0 0 8px; }
+.hero-info { flex: 1; min-width: 0; position: relative; z-index: 1; }
+.hero-title { font-size: clamp(17px, 5vw, 22px); font-weight: 800; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hero-time { font-size: 34px; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; margin-top: 2px; }
+.hero-time small { margin-left: 8px; font-size: 12px; font-weight: 800; padding: 3px 8px; border-radius: 8px; background: rgba(255,255,255,.22); vertical-align: middle; }
+.hero-left { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 13px; font-weight: 700; }
+.hero-left > span:first-child { white-space: nowrap; opacity: .95; }
+.hero-left b { font-weight: 800; font-variant-numeric: tabular-nums; }
+.hero-bar { flex: 1; height: 7px; border-radius: 7px; background: rgba(255,255,255,.28); overflow: hidden; }
+.hero-bar i { display: block; height: 100%; border-radius: 7px; background: #fff; box-shadow: 0 0 10px rgba(255,255,255,.7); transition: width 1s var(--ease); }
+
+/* ===== Línea de tiempo ===== */
+.tl { position: relative; padding-left: 4px; }
+.tl-group { position: relative; padding-left: 30px; margin-bottom: 6px !important; animation: tlin .5s var(--ease) both; animation-delay: calc(var(--i) * 70ms); }
+@keyframes tlin { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+.tl-group::before { content: ""; position: absolute; left: 9px; top: 22px; bottom: -8px; width: 3px; border-radius: 3px; background: linear-gradient(var(--c), color-mix(in srgb, var(--c) 10%, transparent)); opacity: .9; }
+.tl-group:last-child::before { bottom: 12px; }
+.tl-day { position: relative; display: flex; align-items: center; gap: 10px; margin: 2px 0 8px -30px; padding-left: 30px; }
+.tl-node { position: absolute; left: 1px; top: 50%; width: 19px; height: 19px; margin-top: -9.5px; border-radius: 50%; background: var(--bg); border: 4px solid var(--c); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 18%, transparent), 0 0 16px color-mix(in srgb, var(--c) 55%, transparent); }
+.is-next .tl-node::after { content: ""; position: absolute; inset: -8px; border-radius: 50%; border: 2px solid var(--c); animation: tlpulse 1.8s ease-out infinite; }
+@keyframes tlpulse { from { transform: scale(.6); opacity: .9; } to { transform: scale(1.5); opacity: 0; } }
+.tl-label { font-size: 13px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--c); }
+.tl-day em { font-style: normal; font-size: 11.5px; font-weight: 800; padding: 3px 8px; border-radius: 99px; color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); }
+.tl .item { background: linear-gradient(100deg, color-mix(in srgb, var(--cat) 16%, var(--surface)) 0%, var(--surface) 55%); border-color: color-mix(in srgb, var(--cat) 28%, var(--border)); }
+.tl .item .rel { color: var(--cat); font-size: 14px; }
+.tl .list { gap: 8px; }

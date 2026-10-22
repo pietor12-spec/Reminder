@@ -597,6 +597,12 @@ function countdown(ms) {
 }
 
 let homeFilter = 'next';
+// Lo que ya ha pasado desde que creaste el recordatorio (o desde la repetición anterior)
+function heroProgress(r) {
+  const per = { daily: DAY, weekdays: DAY, weekly: 7 * DAY, monthly: 30 * DAY, yearly: 365 * DAY }[r.repeat] || 30 * DAY;
+  const start = Math.max(r.createdAt || r.due - 7 * DAY, r.due - per);
+  return Math.round(Math.min(1, Math.max(.04, (Date.now() - start) / Math.max(1, r.due - start))) * 100);
+}
 function renderHome() {
   const v = $('#view-home');
   const now = Date.now(), today0 = +startOfDay(new Date()), tomorrow0 = +addDays(startOfDay(new Date()), 1);
@@ -621,11 +627,14 @@ function renderHome() {
 
   let hero;
   if (next) {
-    hero = `<div class="hero" data-id="${next.id}" data-act="edit">
-      <svg class="hero-bell" viewBox="0 0 512 512"><use href="#bell"/></svg>
-      <div class="hero-date">${(d => cap(d.toLocaleDateString('es-ES', { weekday: 'long' })) + ' ' + d.getDate() + (d.getMonth() !== new Date().getMonth() ? ' ' + d.toLocaleDateString('es-ES', { month: 'short' }).replace('.', '') : ''))(new Date(next.due))} · ${fmtTime(new Date(next.due))}</div>
-      <h2>${esc(next.title)}${next.repeat !== 'none' && next.repeat ? `<small>${REPEAT_LABEL[next.repeat]}</small>` : ''}</h2>
-      <div class="count"><span style="opacity:.8;font-weight:600">Faltan</span> <span id="heroCount">${countdown(next.due)}</span></div>
+    const nd = new Date(next.due);
+    hero = `<div class="hero hero2" data-id="${next.id}" data-act="edit">
+      <div class="cal-leaf"><i>${nd.toLocaleDateString('es-ES', { weekday: 'short' }).replace('.', '').toUpperCase()}</i><b>${nd.getDate()}</b><small>${nd.toLocaleDateString('es-ES', { month: 'long' })}</small></div>
+      <div class="hero-info">
+        <div class="hero-title">${esc(next.title)}</div>
+        <div class="hero-time">${fmtTime(nd)}${next.repeat && next.repeat !== 'none' ? `<small>${REPEAT_LABEL[next.repeat]}</small>` : ''}</div>
+        <div class="hero-left"><span>Faltan <b id="heroCount">${countdown(next.due)}</b></span><span class="hero-bar"><i id="heroBar" style="width:${heroProgress(next)}%"></i></span></div>
+      </div>
     </div>`;
   } else {
     hero = `<div class="hero calm">
@@ -636,13 +645,13 @@ function renderHome() {
     </div>`;
   }
 
-  let groups = [
-    ['Atrasados', overdue, 'overdue'],
-    ['Hoy', upcoming.filter(r => r.due < tomorrow0)],
-    ['Mañana', upcoming.filter(r => r.due >= tomorrow0 && r.due < tomorrow0 + DAY)],
-    ['Próximos 7 días', upcoming.filter(r => r.due >= tomorrow0 + DAY && r.due < now + 7 * DAY)],
-  ].filter(g => g[1].length).map(([t, arr, cls]) => [t, arr.sort(sortRem).map(r => ({ r, at: r.due,
-      showDay: !['Hoy', 'Mañana', 'Atrasados'].includes(t) || (t === 'Atrasados' && !sameDay(new Date(r.due), new Date())) })), cls]);
+  let groups = [];
+  if (overdue.length) groups.push(['Atrasados', overdue.sort(sortRem).map(r => ({ r, at: r.due, showDay: !sameDay(new Date(r.due), new Date()) })), 'overdue']);
+  {
+    const byDay = new Map();
+    upcoming.filter(r => r.due < now + 7 * DAY).sort(sortRem).forEach(r => { const k = ymd(new Date(r.due)); if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push({ r, at: r.due }); });
+    for (const [k, arr] of byDay) groups.push([dayFull(new Date(k + 'T12:00')), arr, '']);
+  }
 
   if (homeFilter !== 'next') {
     const s = homeFilter === 'week' ? w0 : new Date(t0.getFullYear(), t0.getMonth(), 1);
@@ -659,9 +668,14 @@ function renderHome() {
       .map(([k, arr]) => [dayFull(new Date(k + 'T12:00')), arr.sort((p, q) => p.at - q.at), new Date(k + 'T23:59') < new Date() ? 'overdue' : '']);
   }
 
-  const lists = groups.length ? groups.map(([t, arr, cls]) => `
-    <div class="group"><div class="group-title ${cls || ''}">${t}</div>
-    <div class="list">${arr.map(o => itemHTML(o.r, o.at, { showDay: o.showDay, virtual: o.virtual })).join('')}</div></div>`).join('')
+  const lists = groups.length ? `<div class="tl">` + groups.map(([t, arr, cls], gi) => {
+      const c = cls === 'overdue' ? 'var(--overdue)' : catColor(arr[0].r.cat);
+      const first = arr[0].at, isNext = gi === (cls === 'overdue' ? -1 : (groups[0][2] === 'overdue' ? 1 : 0));
+      const rel = cls === 'overdue' ? '' : (first - now < DAY ? relLabel(first, now) : 'en ' + Math.round((startOfDay(new Date(first)) - startOfDay(new Date())) / DAY) + ' d');
+      return `<div class="group tl-group${isNext ? ' is-next' : ''}" style="--c:${c};--i:${gi}">
+        <div class="tl-day"><span class="tl-node"></span><span class="tl-label">${t}</span>${rel ? `<em>${rel}</em>` : ''}</div>
+        <div class="list">${arr.map(o => itemHTML(o.r, o.at, { showDay: o.showDay, virtual: o.virtual })).join('')}</div></div>`;
+    }).join('') + `</div>`
     : homeFilter !== 'next' ? `<p class="empty-mini">Nada ${homeFilter === 'week' ? 'esta semana' : 'este mes'}.</p>`
     : list.length ? `<p class="empty-mini">Nada en los próximos 7 días.</p>`
     : `<div class="empty">
@@ -691,6 +705,9 @@ function renderHome() {
 }
 // Muestra solo los recordatorios que caben en pantalla sin desplazar
 function fitHome() {
+  // El título de la tarjeta en una sola línea: reduce la letra hasta que quepa
+  const ht = $('#view-home .hero-title');
+  if (ht) { let fs = 22; ht.style.fontSize = fs + 'px'; while (ht.scrollWidth > ht.clientWidth + 1 && fs > 13) { fs -= 1; ht.style.fontSize = fs + 'px'; } }
   const main = $('#view-home .home-main');
   if (!main || query || $('#app').hidden) return;
   const fabTop = window.innerHeight - 12;
@@ -949,7 +966,7 @@ function tick() {
   if (el && tab === 'home') {
     const n = pending().filter(r => r.due >= Date.now()).sort((a, b) => a.due - b.due)[0];
     const heroId = $('.hero[data-id]')?.dataset.id;
-    if (!n || n.id !== heroId) render(); else el.textContent = countdown(n.due);
+    if (!n || n.id !== heroId) render(); else { el.textContent = countdown(n.due); const bar = $('#heroBar'); if (bar) bar.style.width = heroProgress(n) + '%'; }
   }
 }
 
