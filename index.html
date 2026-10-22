@@ -29,7 +29,7 @@
       } catch (e) { document.documentElement.dataset.theme = 'dark'; }
     })();
   </script>
-  <link rel="stylesheet" href="styles.css?v=15">
+  <link rel="stylesheet" href="styles.css?v=16">
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -68,6 +68,7 @@
       </button>
       <div class="top-actions">
         <button class="icon-btn" id="searchBtn" aria-label="Buscar" hidden><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></button>
+        <button class="icon-btn save-btn" id="saveBtn" aria-label="Guardado: exportar e importar">💾</button>
         <button id="fab" aria-label="Nuevo recordatorio"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
       </div>
     </header>
@@ -180,9 +181,10 @@
 
   <div id="alarm" class="overlay" role="alertdialog" aria-live="assertive"></div>
   <div id="tomorrow" class="overlay" role="dialog"></div>
+  <div id="saveBox" class="overlay" role="dialog"></div>
   <div id="toasts" aria-live="polite"></div>
-  <input type="file" id="importFile" accept="application/json,.json" hidden>
+  <input type="file" id="importFile" accept="application/json,.json,text/plain,.txt" hidden>
 
-  <script src="app.js?v=15"></script>
+  <script src="app.js?v=16"></script>
 </body>
 </html>

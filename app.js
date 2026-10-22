@@ -1036,10 +1036,8 @@ function settingsAction(a) {
     const list = pending();
     if (!list.length) return toast('No hay pendientes que exportar');
     download('reminder.ics', icsFile(list), 'text/calendar');
-  } else if (a === 'export') {
-    download(`reminder-copia-${ymd(new Date())}.json`, JSON.stringify(state, null, 2), 'application/json');
-  } else if (a === 'import') {
-    $('#importFile').click();
+  } else if (a === 'export' || a === 'import') {
+    openSave();
   } else if (a === 'wipe') {
     if (confirm('¿Borrar todos los recordatorios de este dispositivo? No se puede deshacer.')) { state.reminders = []; commit(); toast('Todo borrado'); }
   } else if (a === 'clearDone') {
@@ -1058,17 +1056,126 @@ function settingsAction(a) {
     installEvt.prompt(); installEvt.userChoice.finally(() => { installEvt = null; render(); });
   }
 }
+/* ---------- Guardado 💾: exportar / importar (JSON y texto) ---------- */
+const REP_TXT = { none: 'Nunca', daily: 'Cada día', weekdays: 'Laborables', weekly: 'Semanal', monthly: 'Mensual', yearly: 'Anual' };
+const ALERT_TXT = { 0: 'A la hora', 5: '5 min antes', 15: '15 min antes', 30: '30 min antes', 60: '1 hora antes', 1440: '1 día antes' };
+const dmy = d => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+function exportJSON() {
+  const data = { app: 'Reminder', v: 1, exportado: new Date().toISOString(), reminders: state.reminders, tombstones: state.tombstones };
+  download(`reminder-${ymd(new Date())}.json`, JSON.stringify(data, null, 2), 'application/json');
+  toast('Copia JSON descargada', `${state.reminders.length} recordatorios`);
+}
+function exportTXT() {
+  const list = [...state.reminders].sort((x, y) => (x.done - y.done) || x.due - y.due);
+  const line = r => { const d = new Date(r.due);
+    return [dmy(d), hm(d), r.title, CATS.find(c => c.id === r.cat)?.name || 'Otros', REP_TXT[r.repeat || 'none'], ALERT_TXT[r.alert || 0] || (r.alert + ' min antes'), (r.notes || '').replace(/[\n|]/g, ' '), r.done ? 'hecho' : 'pendiente'].join(' | '); };
+  const txt = [
+    `REMINDER — copia del ${dmy(new Date())}`,
+    `# fecha | hora | título | categoría | repetir | aviso | notas | estado`,
+    `# Para importar también vale escribir una línea natural: «Llamar al dentista el 5/11 a las 10»`,
+    '', ...list.map(line), '',
+  ].join('\n');
+  download(`reminder-${ymd(new Date())}.txt`, txt, 'text/plain;charset=utf-8');
+  toast('Copia de texto descargada', `${list.length} recordatorios`);
+}
+function importJSON(text) {
+  const data = JSON.parse(text);
+  const arr = Array.isArray(data) ? data : data.reminders;
+  if (!Array.isArray(arr)) throw new Error('formato');
+  const ids = new Set(state.reminders.map(r => r.id));
+  const added = arr.filter(r => r && r.title && r.due && !ids.has(r.id)).map(r => ({ ...r, id: r.id || uid(), calEventId: null, calSig: null, inCal: false, wantCal: !!state.settings.autoCal && !r.done && r.due > Date.now() }));
+  state.reminders.push(...added);
+  return { added: added.length, skipped: arr.length - added.length, bad: [] };
+}
+function importTXT(text) {
+  const catId = n => { const c = CATS.find(c => deacc(c.name) === deacc((n || '').trim())); return c ? c.id : null; };
+  const repId = n => Object.keys(REP_TXT).find(k => deacc(REP_TXT[k]) === deacc((n || '').trim())) || 'none';
+  const alertMin = n => { const k = Object.keys(ALERT_TXT).find(k => deacc(ALERT_TXT[k]) === deacc((n || '').trim())); return k ? +k : 0; };
+  const existing = new Set(state.reminders.map(r => deacc(r.title) + '|' + r.due));
+  let added = 0, dup = 0; const bad = [];
+  for (let raw of text.split(/\r?\n/)) {
+    const ln = raw.trim();
+    if (!ln || ln.startsWith('#') || /^REMINDER\b/i.test(ln)) continue;
+    let r = null;
+    const parts = ln.split('|').map(s => s.trim());
+    const dm = parts[0] && parts[0].match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/);
+    const tm = parts[1] && parts[1].match(/^(\d{1,2})[:.h](\d{2})$/);
+    if (parts.length >= 3 && dm && tm && parts[2]) {
+      let y = +dm[3]; if (y < 100) y += 2000;
+      const due = +new Date(y, +dm[2] - 1, +dm[1], +tm[1], +tm[2]);
+      const done = /hecho/i.test(parts[7] || '');
+      r = { title: parts[2], due, cat: catId(parts[3]) || guessCat(parts[2]) || 'personal', repeat: repId(parts[4]), alert: alertMin(parts[5]), notes: parts[6] || '', done, doneAt: done ? Date.now() : null };
+    } else {
+      const p = parseNL(ln.replace(/^[-•*]\s*/, ''));
+      if (p.date && p.time && p.title) {
+        const due = +fromParts(ymd(p.date), p.time);
+        r = { title: p.title, due, cat: guessCat(p.title) || 'personal', repeat: p.repeat || 'none', alert: 0, notes: '', done: false, doneAt: null };
+      }
+    }
+    if (!r) { bad.push(ln); continue; }
+    const key = deacc(r.title) + '|' + r.due;
+    if (existing.has(key)) { dup++; continue; }
+    existing.add(key);
+    state.reminders.push({ id: uid(), createdAt: Date.now(), firedAt: r.due < Date.now() ? r.due : null, snoozeUntil: null, inCal: false,
+      wantCal: !!state.settings.autoCal && !r.done && r.due > Date.now(), anchorDay: new Date(r.due).getDate(), priority: false, ...r });
+    added++;
+  }
+  return { added, skipped: dup, bad };
+}
+function doImport(kind, text) {
+  let res;
+  try { res = kind === 'json' ? importJSON(text) : importTXT(text); }
+  catch (e) { toast('Archivo no válido', kind === 'json' ? 'No es un JSON de Reminder.' : 'No he entendido el texto.'); return; }
+  commit();
+  const out = $('#saveResult');
+  out.hidden = false;
+  out.className = 'save-result' + (res.bad.length && !res.added ? ' warn' : '');
+  out.innerHTML = `<b>${res.added} importado${res.added === 1 ? '' : 's'}</b>${res.skipped ? ` · ${res.skipped} ya estaba${res.skipped === 1 ? '' : 'n'}` : ''}` +
+    (res.bad.length ? `<br><span>No entendí ${res.bad.length} línea${res.bad.length > 1 ? 's' : ''} (le falta el día o la hora):</span><ul>${res.bad.slice(0, 5).map(l => `<li>${esc(l)}</li>`).join('')}</ul>` : '');
+  if (res.added) toast(`Importados ${res.added} recordatorios`);
+}
+let importKind = 'json';
 $('#importFile').addEventListener('change', async e => {
-  const f = e.target.files[0]; if (!f) return;
-  try {
-    const data = JSON.parse(await f.text());
-    if (!Array.isArray(data.reminders)) throw 0;
-    const ids = new Set(state.reminders.map(r => r.id));
-    const added = data.reminders.filter(r => r && r.id && r.title && !ids.has(r.id));
-    state.reminders.push(...added);
-    commit(); toast(`Importados ${added.length} recordatorios`);
-  } catch (err) { toast('Archivo no válido', 'Usa una copia exportada desde Reminder.'); }
+  const file = e.target.files[0]; if (!file) return;
+  const text = await file.text();
+  doImport(/\.json$/i.test(file.name) || /^\s*[\[{]/.test(text) ? 'json' : 'txt', text);
   e.target.value = '';
+});
+function openSave() {
+  openMenu(false);
+  const n = state.reminders.length;
+  $('#saveBox').innerHTML = `<div class="save-card">
+    <div class="save-head"><span class="save-ico">💾</span><div><h3>Guardado</h3><small>${n} recordatorio${n === 1 ? '' : 's'} en este dispositivo</small></div>
+      <button class="icon-btn" data-sv="close" aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <h4>Exportar</h4>
+    <div class="save-row">
+      <button class="save-opt" data-sv="exp-json"><b>JSON</b><small>Copia completa para restaurar</small></button>
+      <button class="save-opt" data-sv="exp-txt"><b>Texto</b><small>Legible, para leer o editar</small></button>
+    </div>
+    <h4>Importar</h4>
+    <div class="save-row">
+      <button class="save-opt" data-sv="imp-json"><b>JSON</b><small>Desde una copia .json</small></button>
+      <button class="save-opt" data-sv="imp-txt"><b>Texto</b><small>Desde un archivo .txt</small></button>
+    </div>
+    <details class="paste"><summary>…o pega aquí el texto</summary>
+      <textarea id="pasteTxt" rows="4" placeholder="Una por línea:\nLlamar al dentista el 5/11 a las 10\nPagar el alquiler el 1 de noviembre a las 9 cada mes"></textarea>
+      <button class="btn primary" data-sv="paste">Importar texto</button>
+    </details>
+    <div class="save-result" id="saveResult" hidden></div>
+  </div>`;
+  $('#saveBox').classList.add('show');
+}
+$('#saveBtn').addEventListener('click', openSave);
+$('#saveBox').addEventListener('click', e => {
+  if (e.target === $('#saveBox')) { $('#saveBox').classList.remove('show'); return; }
+  const b = e.target.closest('[data-sv]'); if (!b) return;
+  const a = b.dataset.sv;
+  if (a === 'close') $('#saveBox').classList.remove('show');
+  else if (a === 'exp-json') exportJSON();
+  else if (a === 'exp-txt') exportTXT();
+  else if (a === 'imp-json') { $('#importFile').accept = 'application/json,.json'; $('#importFile').click(); }
+  else if (a === 'imp-txt') { $('#importFile').accept = 'text/plain,.txt,.csv'; $('#importFile').click(); }
+  else if (a === 'paste') { const t = $('#pasteTxt').value.trim(); if (t) doImport(/^\s*[\[{]/.test(t) ? 'json' : 'txt', t); }
 });
 
 /* ---------- Deslizar para completar / borrar ---------- */

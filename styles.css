@@ -601,3 +601,30 @@ button.stat:active { transform: scale(.97); }
 .tm-time { font-weight: 800; font-variant-numeric: tabular-nums; color: var(--accent-ink); }
 .tm-title { font-weight: 700; }
 .tm-ok { width: 100%; margin-top: 18px; padding: 14px; font-size: 16px; border-radius: 16px; }
+
+/* Guardado 💾 */
+.save-btn { font-size: 22px; line-height: 1; background: var(--surface); border: 1px solid var(--border); }
+#saveBox { z-index: 96; align-items: end; }
+@media (min-width: 600px) { #saveBox { align-items: center; } }
+.save-card { width: min(440px, 100%); background: var(--surface); border: 1px solid var(--border); border-radius: 26px; box-shadow: var(--shadow-lg); padding: 20px 18px 18px; transform: translateY(20px); transition: transform .4s var(--spring); max-height: 90dvh; overflow: auto; }
+#saveBox.show .save-card { transform: none; }
+.save-head { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+.save-head > div { flex: 1; }
+.save-ico { font-size: 34px; }
+.save-head h3 { margin: 0; font-family: var(--display); font-weight: 500; font-size: 26px; }
+.save-head small { color: var(--muted); }
+.save-card h4 { margin: 16px 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.save-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.save-opt { text-align: left; padding: 14px; border-radius: 16px; background: var(--surface-2); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 2px; transition: border-color .2s, transform .15s; }
+.save-opt b { font-size: 16px; }
+.save-opt small { color: var(--muted); font-size: 12.5px; }
+.save-opt:hover { border-color: var(--brand-2); }
+.save-opt:active { transform: scale(.97); }
+.paste { margin-top: 14px; }
+.paste summary { cursor: pointer; color: var(--accent-ink); font-weight: 700; font-size: 14px; }
+.paste textarea { width: 100%; margin: 10px 0; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); resize: vertical; font: inherit; font-size: 14px; }
+.paste .btn { width: 100%; }
+.save-result { margin-top: 14px; padding: 12px 14px; border-radius: 14px; background: color-mix(in srgb, var(--c-casa) 14%, transparent); font-size: 14px; }
+.save-result.warn { background: color-mix(in srgb, var(--overdue) 14%, transparent); }
+.save-result span { color: var(--overdue); font-weight: 600; font-size: 13px; }
+.save-result ul { margin: 6px 0 0; padding-left: 18px; color: var(--muted); font-size: 13px; }
