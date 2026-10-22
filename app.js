@@ -68,7 +68,7 @@ const CATS = [
 ];
 const catColor = id => `var(--c-${CATS.some(c => c.id === id) ? id : 'otros'})`;
 const REPEAT_LABEL = { none: '', daily: 'Cada día', weekdays: 'Laborables', weekly: 'Semanal', monthly: 'Mensual', yearly: 'Anual' };
-const TABS = { home: 'Inicio', calendar: 'Calendario', list: 'Recordatorios', done: 'Hecho', settings: 'Ajustes' };
+const TABS = { home: 'Inicio', done: 'Recordatorios', settings: 'Ajustes' };
 const PROVIDERS = { google: 'Google Calendar', apple: 'Apple / iCal (.ics)', outlook: 'Outlook' };
 
 const ICON = {
@@ -713,8 +713,8 @@ function renderHome() {
   if (homeFilter === 'day') {
     groups = dayGroups(startOfDay(calSel), addDays(startOfDay(calSel), 1), { includeDone: true });
   } else if (homeFilter !== 'next') {
-    const s = homeFilter === 'week' ? w0 : new Date(t0.getFullYear(), t0.getMonth(), 1);
-    const e = homeFilter === 'week' ? addDays(w0, 7) : new Date(t0.getFullYear(), t0.getMonth() + 1, 1);
+    const s = homeFilter === 'week' ? w0 : new Date(calMonth.getFullYear(), calMonth.getMonth(), 1);
+    const e = homeFilter === 'week' ? addDays(w0, 7) : new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1);
     groups = dayGroups(s, e);
   }
 
@@ -744,7 +744,7 @@ function renderHome() {
       </div>
       ${isDesktop() ? `<div class="home-cal">${calCardHTML()}</div>` : ''}
     </div>
-    <div class="home-main${homeFilter !== 'next' || isDesktop() ? ' scroll' : ''}">${homeFilter === 'day' && groups.length ? '' : ''}${lists}</div>
+    <div class="home-main${homeFilter !== 'next' || isDesktop() ? ' scroll' : ''}">${!isDesktop() && (homeFilter === 'month' || homeFilter === 'day') ? `<div class="home-cal mobile">${calCardHTML()}</div>` : ''}${lists}</div>
   </div>`;
   requestAnimationFrame(fitHome);
 }
@@ -875,7 +875,7 @@ function renderDone() {
   const groups = new Map();
   done.forEach(r => { const k = ymd(new Date(r.doneAt || r.due)); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(r); });
   v.innerHTML = `
-    <div class="greet"><h1>Lo que ya tachaste</h1><p>${week ? 'Buen ritmo esta semana.' : 'Aquí irá todo lo que completes.'}</p></div>
+    <div class="greet"><h1>Recordatorios</h1><p>${week ? 'Lo que ya has hecho · buen ritmo esta semana.' : 'Aquí irá todo lo que completes.'}</p></div>
     <div class="done-hero">
       <div class="stat"><b>${week}</b><span>Esta semana</span></div>
       <div class="stat"><b>${streak}</b><span>Días seguidos</span></div>
@@ -962,8 +962,6 @@ function updateBadges() {
   const b = $('#bellBadge');
   b.hidden = !urgent; b.textContent = urgent;
   $('[data-count="home"]').textContent = p.length || '';
-  $('[data-count="calendar"]').textContent = p.filter(r => r.due >= now && r.due < now + 30 * DAY).length || '';
-  $('[data-count="list"]').textContent = p.length || '';
   $('[data-count="done"]').textContent = state.reminders.filter(r => r.done).length || '';
   document.title = urgent ? `(${urgent}) Reminder` : 'Reminder';
   try { if ('setAppBadge' in navigator) urgent ? navigator.setAppBadge(urgent) : navigator.clearAppBadge(); } catch (e) { }
@@ -995,7 +993,7 @@ $('#views').addEventListener('click', e => {
     return;
   }
   const hf = t.closest('[data-hf]');
-  if (hf) { homeFilter = hf.dataset.hf; renderHome(); return; }
+  if (hf) { homeFilter = hf.dataset.hf; if (homeFilter === 'month') { calMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1); calSel = startOfDay(new Date()); } renderHome(); return; }
   const go = t.closest('[data-goto]');
   if (go) { if (go.dataset.goto === 'list') listMode = 'all'; setTab(go.dataset.goto); return; }
   const lm = t.closest('[data-lmode]');
@@ -1023,6 +1021,7 @@ $('#views').addEventListener('click', e => {
   const cal = t.closest('[data-cal]');
   if (cal) {
     const c = cal.dataset.cal;
+    if (tab === 'home' && homeFilter === 'day' && c !== 'add') homeFilter = 'month';
     if (c === 'prev') calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() - 1, 1);
     else if (c === 'next') calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1);
     else if (c === 'today') { calSel = startOfDay(new Date()); calMonth = new Date(calSel.getFullYear(), calSel.getMonth(), 1); }
@@ -1466,7 +1465,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { if (sheet.classList.contains('open')) closeSheet(); else if (menu.classList.contains('open')) openMenu(false); else if (!$('#searchBar').hidden) toggleSearch(false); return; }
   if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
   if (e.key === 'n' || e.key === '+') { e.preventDefault(); openSheet(); }
-  else if ('12345'.includes(e.key)) setTab(['home', 'calendar', 'list', 'done', 'settings'][+e.key - 1]);
+  else if ('123'.includes(e.key)) setTab(['home', 'done', 'settings'][+e.key - 1]);
 });
 
 /* ---------- Service worker ---------- */

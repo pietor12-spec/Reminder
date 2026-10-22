@@ -16,7 +16,6 @@
     { "src": "icons/logo.svg", "sizes": "any", "type": "image/svg+xml" }
   ],
   "shortcuts": [
-    { "name": "Nuevo recordatorio", "url": "./?new=1", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
-    { "name": "Calendario", "url": "./?tab=calendar", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
+    { "name": "Nuevo recordatorio", "url": "./?new=1", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
   ]
 }

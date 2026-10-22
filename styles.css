@@ -751,3 +751,10 @@ button.stat:active { transform: scale(.97); }
   .home-layout, .cal-layout { gap: 88px; }
   #view-home .greet { margin-left: 4px; }
 }
+
+/* Mitad y mitad en ordenador */
+@media (min-width: 900px) {
+  .home-layout { grid-template-columns: 1fr 1fr; gap: 56px; }
+  .home-side { max-width: 640px; }
+}
+.home-cal.mobile { margin: 0 0 18px; }
