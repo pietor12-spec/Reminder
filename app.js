@@ -59,7 +59,7 @@ const CATS = [
 ];
 const catColor = id => `var(--c-${CATS.some(c => c.id === id) ? id : 'otros'})`;
 const REPEAT_LABEL = { none: '', daily: 'Cada día', weekdays: 'Laborables', weekly: 'Semanal', monthly: 'Mensual', yearly: 'Anual' };
-const TABS = { home: 'Inicio', calendar: 'Calendario', done: 'Hecho', settings: 'Ajustes' };
+const TABS = { home: 'Inicio', calendar: 'Calendario', list: 'Recordatorios', done: 'Hecho', settings: 'Ajustes' };
 const PROVIDERS = { google: 'Google Calendar', apple: 'Apple / iCal (.ics)', outlook: 'Outlook' };
 
 const ICON = {
@@ -490,7 +490,6 @@ function itemHTML(r, at = r.due, { virtual = false, showDay = false } = {}) {
   if (r.repeat && r.repeat !== 'none') meta.push(`<span class="m">${ICON.repeat}${REPEAT_LABEL[r.repeat]}</span>`);
   if (r.inCal) meta.push(`<span class="m" title="En tu calendario">${ICON.cal}</span>`);
   if (r.notes) meta.push(`<span class="m">${ICON.note}</span>`);
-  meta.push(`<span class="m">${CATS.find(c => c.id === r.cat)?.name || 'Otros'}</span>`);
   return `<div class="item-wrap" data-id="${r.id}">
     <div class="swipe-bg done"><span>✓ Hecho</span></div>
     <div class="item${r.done ? ' is-done' : ''}" style="--cat:${catColor(r.cat)}">
@@ -594,6 +593,88 @@ function renderHome() {
     </div>
     <div class="home-main">${lists}</div>
   </div>`;
+  requestAnimationFrame(fitHome);
+}
+// Muestra solo los recordatorios que caben en pantalla sin desplazar
+function fitHome() {
+  const main = $('#view-home .home-main');
+  if (!main || query || $('#app').hidden) return;
+  const wraps = $$('.item-wrap', main);
+  if (wraps.length < 3) return;
+  const limit = window.innerHeight - 150; // deja sitio para el botón + y «Ver todos»
+  const bottoms = wraps.map(w => w.getBoundingClientRect().bottom + window.scrollY);
+  let hidden = 0;
+  wraps.forEach((w, i) => { if (i >= 2 && bottoms[i] > limit) { w.hidden = true; hidden++; } });
+  $$('.group', main).forEach(g => { if (!$$('.item-wrap:not([hidden])', g).length) g.hidden = true; });
+  if (hidden) main.insertAdjacentHTML('beforeend', `<button class="see-all" data-goto="list">Ver todos los recordatorios <b>${pending().length}</b> ${ICON.right}</button>`);
+}
+
+/* ---------- Render: Recordatorios (todos, con filtro) ---------- */
+let listMode = 'week', listAnchor = startOfDay(new Date());
+function listRange() {
+  const a0 = startOfDay(listAnchor);
+  if (listMode === 'day') return [a0, addDays(a0, 1)];
+  if (listMode === 'week') { const s = addDays(a0, -((a0.getDay() + 6) % 7)); return [s, addDays(s, 7)]; }
+  if (listMode === 'month') return [new Date(a0.getFullYear(), a0.getMonth(), 1), new Date(a0.getFullYear(), a0.getMonth() + 1, 1)];
+  return null;
+}
+function listLabel([s, e]) {
+  if (listMode === 'day') return sameDay(s, new Date()) ? 'Hoy' : fmtLong(s);
+  if (listMode === 'week') {
+    const last = addDays(e, -1);
+    const f = d => d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }).replace('.', '');
+    return `${f(s)} – ${f(last)}`;
+  }
+  return cap(s.toLocaleDateString('es-ES', { month: 'long' })) + ' ' + s.getFullYear();
+}
+function renderList() {
+  const v = $('#view-list');
+  const now = Date.now();
+  const modes = [['day', 'Día'], ['week', 'Semana'], ['month', 'Mes'], ['all', 'Todos']];
+  const range = listRange();
+  let groups = [], total = 0;
+  if (range) {
+    const [s, e] = range;
+    const map = new Map();
+    for (const r of state.reminders) {
+      if (r.done) continue;
+      for (const t of occurrencesBetween(r, +s, +e)) {
+        const k = ymd(new Date(t)); if (!map.has(k)) map.set(k, []);
+        map.get(k).push({ r, at: t, virtual: t !== r.due }); total++;
+      }
+    }
+    groups = [...map.entries()].sort((x, y) => x[0] < y[0] ? -1 : 1).map(([k, arr]) => {
+      const d = new Date(k + 'T12:00');
+      const label = listMode === 'day' ? '' : (['Hoy', 'Mañana', 'Ayer'].includes(dayLabel(d)) ? dayLabel(d) + ' · ' : '') + fmtLong(d);
+      return [label, arr.sort((p, q) => p.at - q.at), ''];
+    });
+  } else {
+    const list = pending().sort((x, y) => x.due - y.due);
+    total = list.length;
+    const over = list.filter(r => r.due < now);
+    if (over.length) groups.push(['Atrasados', over.map(r => ({ r, at: r.due })), 'overdue']);
+    const byMonth = new Map();
+    list.filter(r => r.due >= now).forEach(r => {
+      const d = new Date(r.due), k = cap(d.toLocaleDateString('es-ES', { month: 'long' })) + ' ' + d.getFullYear();
+      if (!byMonth.has(k)) byMonth.set(k, []); byMonth.get(k).push({ r, at: r.due });
+    });
+    groups.push(...[...byMonth].map(([k, arr]) => [k, arr, '']));
+  }
+  const showDay = listMode === 'all';
+  v.innerHTML = `
+    <div class="greet"><h1>Recordatorios</h1><p>${total ? `${total} pendiente${total > 1 ? 's' : ''}` : 'Nada pendiente aquí'}</p></div>
+    <div class="list-tools">
+      <div class="seg wide">${modes.map(([m, l]) => `<button data-lmode="${m}" class="${listMode === m ? 'on' : ''}">${l}</button>`).join('')}</div>
+      ${range ? `<div class="period">
+        <button class="icon-btn" data-lnav="-1" aria-label="Anterior">${ICON.left}</button>
+        <button class="period-label" data-lnav="0">${listLabel(range)}</button>
+        <button class="icon-btn" data-lnav="1" aria-label="Siguiente">${ICON.right}</button>
+      </div>` : ''}
+    </div>
+    ${groups.length ? groups.map(([t, arr, cls]) => `<div class="group">${t ? `<div class="group-title ${cls}">${t}</div>` : ''}
+      <div class="list">${arr.map(o => itemHTML(o.r, o.at, { virtual: o.virtual, showDay })).join('')}</div></div>`).join('')
+      : `<div class="empty" style="padding:28px 20px"><p>${range ? 'Sin recordatorios en este periodo.' : 'No tienes recordatorios pendientes.'}</p>
+         <button class="add-day" data-lnew style="max-width:320px;margin:0 auto">${ICON.plus} Añadir uno</button></div>`}`;
 }
 
 /* ---------- Render: Calendario ---------- */
@@ -742,6 +823,7 @@ let heroTimer;
 function render() {
   if (tab === 'home') renderHome();
   else if (tab === 'calendar') renderCalendar();
+  else if (tab === 'list') renderList();
   else if (tab === 'done') renderDone();
   else renderSettings();
   updateBadges();
@@ -754,6 +836,7 @@ function updateBadges() {
   b.hidden = !urgent; b.textContent = urgent;
   $('[data-count="home"]').textContent = p.length || '';
   $('[data-count="calendar"]').textContent = p.filter(r => r.due >= now && r.due < now + 30 * DAY).length || '';
+  $('[data-count="list"]').textContent = p.length || '';
   $('[data-count="done"]').textContent = state.reminders.filter(r => r.done).length || '';
   document.title = urgent ? `(${urgent}) Reminder` : 'Reminder';
   try { if ('setAppBadge' in navigator) urgent ? navigator.setAppBadge(urgent) : navigator.clearAppBadge(); } catch (e) { }
@@ -784,6 +867,20 @@ $('#views').addEventListener('click', e => {
     else if (a === 'edit' && id) openSheet({ id });
     return;
   }
+  const go = t.closest('[data-goto]');
+  if (go) { if (go.dataset.goto === 'list') listMode = 'all'; setTab(go.dataset.goto); return; }
+  const lm = t.closest('[data-lmode]');
+  if (lm) { listMode = lm.dataset.lmode; renderList(); return; }
+  const ln = t.closest('[data-lnav]');
+  if (ln) {
+    const n = +ln.dataset.lnav, x = new Date(listAnchor);
+    if (n === 0) listAnchor = startOfDay(new Date());
+    else if (listMode === 'day') listAnchor = addDays(x, n);
+    else if (listMode === 'week') listAnchor = addDays(x, 7 * n);
+    else listAnchor = new Date(x.getFullYear(), x.getMonth() + n, 1);
+    renderList(); return;
+  }
+  if (t.closest('[data-lnew]')) { openSheet(listMode === 'day' ? { date: listAnchor } : {}); return; }
   const tr = t.closest('[data-try]');
   if (tr) { openSheet({ text: tr.dataset.try }); return; }
   const day = t.closest('[data-day]');
@@ -1058,7 +1155,7 @@ document.addEventListener('keydown', e => {
   if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
   if (e.key === 'n' || e.key === '+') { e.preventDefault(); openSheet(); }
   else if (e.key === '/') { e.preventDefault(); toggleSearch(true); }
-  else if ('1234'.includes(e.key)) setTab(['home', 'calendar', 'done', 'settings'][+e.key - 1]);
+  else if ('12345'.includes(e.key)) setTab(['home', 'calendar', 'list', 'done', 'settings'][+e.key - 1]);
 });
 
 /* ---------- Service worker ---------- */
@@ -1335,7 +1432,8 @@ function boot() {
     app.addEventListener('animationend', e => { if (e.target === app) app.classList.remove('enter'); }, { once: false });
     splash.classList.add('out');
     setTimeout(() => splash.remove(), 500);
-    checkAlarms();
+    checkAlarms(); render();
+    window.addEventListener('resize', () => { if (tab === 'home') renderHome(); });
     const a = params.get('action'), id = params.get('id');
     if (a && id) { a === 'snooze' ? snooze(id) : a === 'done' ? completeReminder(id) : openSheet({ id }); history.replaceState(null, '', location.pathname); }
     if (params.get('new')) { openSheet(); history.replaceState(null, '', location.pathname); }

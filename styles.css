@@ -199,6 +199,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 #bellMenu.open button:nth-child(2) { transition-delay: .04s; }
 #bellMenu.open button:nth-child(3) { transition-delay: .08s; }
 #bellMenu.open button:nth-child(4) { transition-delay: .12s; }
+#bellMenu.open button:nth-child(5) { transition-delay: .16s; }
 #bellMenu button:hover, #bellMenu button.active { border-color: var(--brand-2); }
 #bellMenu .mi { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; background: var(--surface-2); color: var(--muted); }
 #bellMenu button.active .mi { background: var(--brand); color: #fff; }
@@ -284,7 +285,8 @@ main { max-width: 760px; margin: 0 auto; padding: 4px 16px calc(130px + var(--sa
 .item.completing .title { text-decoration: line-through; color: var(--muted); }
 .item .body { flex: 1; min-width: 0; cursor: pointer; }
 .item .title { font-weight: 650; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.item .meta { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12.5px; margin-top: 2px; flex-wrap: wrap; }
+.item .meta { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12.5px; margin-top: 2px; flex-wrap: nowrap; overflow: hidden; white-space: nowrap; }
+.item .meta .m { flex: none; }
 .item .meta svg { width: 13px; height: 13px; }
 .item .meta .m { display: inline-flex; align-items: center; gap: 4px; }
 .item .rel { font-size: 12.5px; font-weight: 700; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -482,3 +484,18 @@ body.sheet-open #fab svg { transform: rotate(45deg); }
 /* Botón de Google */
 .gbtn { background: #fff; color: #1f1f1f; border: 1px solid #dadce0; gap: 10px; }
 [data-theme="dark"] .gbtn { background: #131314; color: #e3e3e3; border-color: #8e918f; }
+
+/* Ver todos (Inicio) */
+.see-all { width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 12px; margin-top: -6px; border-radius: 14px; color: var(--accent-ink); font-weight: 700; font-size: 14px; }
+.see-all b { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; display: inline-grid; place-items: center; background: color-mix(in srgb, var(--brand-2) 15%, transparent); font-size: 12px; }
+.see-all svg { width: 16px; height: 16px; }
+.see-all:hover { background: var(--surface-2); }
+
+/* Pestaña Recordatorios */
+.list-tools { display: flex; flex-direction: column; gap: 12px; margin: 0 0 20px; }
+.seg.wide { display: grid; grid-template-columns: repeat(4, 1fr); flex-wrap: nowrap; }
+.seg.wide button { padding: 9px 6px; }
+.period { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 4px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); }
+.period-label { flex: 1; text-align: center; font-weight: 700; font-size: 15px; padding: 8px; border-radius: 10px; }
+.period-label:hover { background: var(--surface-2); }
+@media (min-width: 700px) { .list-tools { flex-direction: row; align-items: center; } .seg.wide { flex: none; width: 340px; } .period { flex: 1; } }
