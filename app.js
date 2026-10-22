@@ -68,7 +68,7 @@ const CATS = [
 ];
 const catColor = id => `var(--c-${CATS.some(c => c.id === id) ? id : 'otros'})`;
 const REPEAT_LABEL = { none: '', daily: 'Cada día', weekdays: 'Laborables', weekly: 'Semanal', monthly: 'Mensual', yearly: 'Anual' };
-const TABS = { home: 'Inicio', done: 'Recordatorios', settings: 'Ajustes' };
+const TABS = { home: 'Inicio', calendar: 'Calendario', done: 'Recordatorios', settings: 'Ajustes' };
 const PROVIDERS = { google: 'Google Calendar', apple: 'Apple / iCal (.ics)', outlook: 'Outlook' };
 
 const ICON = {
@@ -505,7 +505,7 @@ function openMenu(open) {
   if (isOpen) { bellRing(); unlockAudio(); }
 }
 function setTab(t, { push = true } = {}) {
-  if (!TABS[t]) t = 'home';
+  if (!TABS[t] || (t === 'calendar' && isDesktop())) t = 'home'; // en ordenador el calendario está en Inicio
   if (t === 'calendar' && tab !== 'calendar') { calSel = startOfDay(new Date()); calMonth = new Date(calSel.getFullYear(), calSel.getMonth(), 1); }
   tab = t; openMenu(false);
   $$('.view').forEach(v => { v.hidden = v.id !== 'view-' + t; });
@@ -713,8 +713,9 @@ function renderHome() {
   if (homeFilter === 'day') {
     groups = dayGroups(startOfDay(calSel), addDays(startOfDay(calSel), 1), { includeDone: true });
   } else if (homeFilter !== 'next') {
-    const s = homeFilter === 'week' ? w0 : new Date(calMonth.getFullYear(), calMonth.getMonth(), 1);
-    const e = homeFilter === 'week' ? addDays(w0, 7) : new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1);
+    const mref = isDesktop() ? calMonth : t0;
+    const s = homeFilter === 'week' ? w0 : new Date(mref.getFullYear(), mref.getMonth(), 1);
+    const e = homeFilter === 'week' ? addDays(w0, 7) : new Date(mref.getFullYear(), mref.getMonth() + 1, 1);
     groups = dayGroups(s, e);
   }
 
@@ -742,7 +743,7 @@ function renderHome() {
         <button class="stat${homeFilter === 'week' ? ' on' : ''}" data-hf="week"><b>${weekCount}</b><span>Semanal</span></button>
         <button class="stat${homeFilter === 'month' ? ' on' : ''}" data-hf="month"><b>${monthCount}</b><span>Mensual</span></button>
       </div>
-      <div class="home-cal">${calCardHTML()}</div>
+      ${isDesktop() ? `<div class="home-cal">${calCardHTML()}</div>` : ''}
     </div>
     <div class="home-main scroll">${lists}</div>
   </div>`;
@@ -840,11 +841,11 @@ function renderCalendar() {
   const monthName = cap(calMonth.toLocaleDateString('es-ES', { month: 'long' }));
   v.innerHTML = `<div class="cal-layout">
     ${calCardHTML()}
-    <div class="day-panel">
-      <button class="add-day" data-cal="add">${ICON.plus} Añadir el ${dayFull(calSel).replace(/^(Hoy|Mañana), /, '').toLowerCase()}</button>
+    <div class="day-panel scroll cal-list">
       ${groups.length ? tlHTML(groups, selKey) : `<p class="empty-mini">Nada en ${monthName.toLowerCase()}.</p>`}
     </div>
   </div>`;
+  requestAnimationFrame(() => { const l = $('#view-calendar .cal-list'); if (l) l.style.maxHeight = Math.max(140, window.innerHeight - 8 - l.getBoundingClientRect().top) + 'px'; });
 }
 function scrollToSelDay() {
   const g = $(`#view-calendar [data-gday="${ymd(calSel)}"]`) || $(`#view-home [data-gday="${ymd(calSel)}"]`);
@@ -942,7 +943,7 @@ function renderSettings() {
 /* ---------- Render global ---------- */
 let heroTimer;
 function lockHome() {
-  const lock = tab === 'home' && !query && !isDesktop() && !document.body.classList.contains('sheet-open');
+  const lock = (tab === 'home' || tab === 'calendar') && !query && !isDesktop() && !document.body.classList.contains('sheet-open');
   document.documentElement.classList.toggle('lock', lock);
   if (lock && window.scrollY) window.scrollTo(0, 0);
 }
@@ -1466,6 +1467,7 @@ document.addEventListener('keydown', e => {
   if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
   if (e.key === 'n' || e.key === '+') { e.preventDefault(); openSheet(); }
   else if ('123'.includes(e.key)) setTab(['home', 'done', 'settings'][+e.key - 1]);
+  else if (e.key === '4' && !isDesktop()) setTab('calendar');
 });
 
 /* ---------- Service worker ---------- */

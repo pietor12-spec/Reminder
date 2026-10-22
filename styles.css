@@ -793,3 +793,15 @@ button.stat:active { transform: scale(.97); }
   .home-cal .cal-head h2 { font-size: 26px; }
   .home-main.scroll { margin-top: 0; }
 }
+
+/* Pestaña Calendario sólo en el móvil */
+@media (min-width: 900px) { #bellMenu .mobile-only { display: none !important; } }
+.cal-list { margin-top: 14px; overscroll-behavior: contain; scrollbar-width: none; padding-top: 4px; }
+.cal-list::-webkit-scrollbar { display: none; }
+#view-calendar .cal-layout { gap: 0; }
+/* Ordenador: calendario un pelín más pequeño */
+@media (min-width: 900px) {
+  .home-side { padding-bottom: 36px; }
+  .home-cal .day .num { width: 40px; height: 40px; font-size: 15px; }
+  .home-cal .cal-head h2 { font-size: 24px; }
+}
