@@ -1,5 +1,5 @@
 /* Reminder — service worker: funciona sin conexión y gestiona las notificaciones */
-const CACHE = 'reminder-v2';
+const CACHE = 'reminder-v3';
 const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'manifest.webmanifest',
   'icons/logo.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/apple-touch-icon.png', 'icons/favicon-32.png'];
 

@@ -81,14 +81,32 @@ let state = load();
 function load() {
   try {
     const s = JSON.parse(localStorage.getItem(KEY));
-    if (s && Array.isArray(s.reminders)) return { v: 1, reminders: s.reminders, settings: { ...DEFAULT_SETTINGS, ...s.settings } };
+    if (s && Array.isArray(s.reminders)) return { v: 1, reminders: s.reminders, tombstones: s.tombstones || {}, calTrash: s.calTrash || [], settings: { ...DEFAULT_SETTINGS, ...s.settings } };
   } catch (e) { /* datos corruptos o almacenamiento bloqueado */ }
-  return { v: 1, reminders: [], settings: { ...DEFAULT_SETTINGS } };
+  return { v: 1, reminders: [], tombstones: {}, calTrash: [], settings: { ...DEFAULT_SETTINGS } };
 }
-function save() {
+
+/* Cada cambio en un recordatorio recibe una marca de tiempo; los borrados dejan una «lápida».
+   Así dos dispositivos pueden fusionar sus datos sin pisarse. */
+let baseline = new Map();
+const sig = r => { const { updatedAt, ...rest } = r; return JSON.stringify(rest); };
+function setBaseline() { baseline = new Map(state.reminders.map(r => [r.id, { s: sig(r), ev: r.calEventId }])); }
+function stamp() {
+  const now = Date.now(), ids = new Set();
+  for (const r of state.reminders) {
+    ids.add(r.id);
+    if (baseline.get(r.id)?.s !== sig(r)) { r.updatedAt = now; delete state.tombstones[r.id]; }
+    if (!baseline.has(r.id) && r.calEventId) state.calTrash = state.calTrash.filter(x => x !== r.calEventId);
+  }
+  for (const [id, b] of baseline) if (!ids.has(id)) { state.tombstones[id] = now; if (b.ev) state.calTrash.push(b.ev); }
+  for (const [id, t] of Object.entries(state.tombstones)) if (now - t > 90 * DAY) delete state.tombstones[id];
+  setBaseline();
+}
+function persist() {
   try { localStorage.setItem(KEY, JSON.stringify(state)); }
   catch (e) { toast('No se pudo guardar', 'El almacenamiento del navegador está lleno o bloqueado.'); }
 }
+function save() { stamp(); persist(); cloud.schedule(); }
 function commit() { save(); render(); }
 const byId = id => state.reminders.find(r => r.id === id);
 
@@ -353,7 +371,7 @@ function completeReminder(id) {
   withUndo(r.repeat && r.repeat !== 'none' ? 'Hecho · siguiente programado' : '¡Hecho!', () => {
     const now = Date.now();
     if (r.repeat && r.repeat !== 'none') {
-      state.reminders.push({ ...r, id: uid(), done: true, doneAt: now, repeat: 'none', seriesId: r.id });
+      state.reminders.push({ ...r, id: uid(), done: true, doneAt: now, repeat: 'none', seriesId: r.id, calEventId: null, calSig: null, wantCal: false, inCal: false });
       let t = nextOccurrence(r, r.due);
       while (t != null && t <= now) t = nextOccurrence(r, t);
       r.due = t; r.firedAt = null; r.snoozeUntil = null;
@@ -687,10 +705,14 @@ function renderSettings() {
       <div class="row"><span class="rl"><b>Tu nombre</b><small>Para el saludo</small></span><input type="text" data-input="name" value="${esc(s.name)}" placeholder="Opcional" maxlength="24"></div>
       <div class="row"><span class="rl"><b>Apariencia</b></span>${seg('theme', [['auto', 'Auto'], ['light', 'Claro'], ['dark', 'Oscuro']])}</div>
     </div>
+    ${cloud.settingsCard()}
     <div class="card">
       <h4>Calendario</h4>
-      <div class="row" style="flex-wrap:wrap"><span class="rl"><b>Mi calendario</b><small>Dónde se añaden tus recordatorios</small></span>${seg('calProvider', [['google', 'Google'], ['apple', 'Apple'], ['outlook', 'Outlook']])}</div>
-      ${tog('autoCal', 'Añadir siempre a mi calendario', 'Cada nuevo recordatorio se envía al guardarlo')}
+      ${cloud.connected() ? `<div class="row"><span class="rl"><b>Google Calendar</b><small>Conectado: los recordatorios se crean, cambian y borran solos, con su aviso</small></span><span style="color:var(--c-casa)">${ICON.check}</span></div>
+      ${tog('autoCal', 'Añadir siempre a Google Calendar', 'Activado por defecto en cada recordatorio nuevo')}
+      <div class="row"><span class="rl"><b>Pendientes antiguos</b><small>Envía al calendario los que aún no están</small></span><button class="btn" data-set="calAll">Añadir</button></div>`
+      : `<div class="row" style="flex-wrap:wrap"><span class="rl"><b>Mi calendario</b><small>Dónde se añaden tus recordatorios</small></span>${seg('calProvider', [['google', 'Google'], ['apple', 'Apple'], ['outlook', 'Outlook']])}</div>
+      ${tog('autoCal', 'Añadir siempre a mi calendario', 'Cada nuevo recordatorio se envía al guardarlo')}`}
       <div class="row"><span class="rl"><b>Exportar todo</b><small>Un archivo .ics con tus pendientes, para importarlo de golpe</small></span><button class="btn" data-set="exportIcs">.ics</button></div>
     </div>
     <div class="card">
@@ -816,6 +838,16 @@ function settingsAction(a) {
     if (confirm('¿Borrar todos los recordatorios de este dispositivo? No se puede deshacer.')) { state.reminders = []; commit(); toast('Todo borrado'); }
   } else if (a === 'clearDone') {
     withUndo('Historial vaciado', () => { state.reminders = state.reminders.filter(r => !r.done); });
+  } else if (a === 'gConnect') {
+    cloud.signIn(false);
+  } else if (a === 'gSync') {
+    cloud.sync(true);
+  } else if (a === 'gDisconnect') {
+    if (confirm('¿Desconectar tu cuenta de Google? Tus recordatorios se quedan en este dispositivo.')) cloud.signOut();
+  } else if (a === 'calAll') {
+    let n = 0;
+    state.reminders.forEach(r => { if (!r.done && !r.wantCal && !r.calEventId && !r.inCal) { r.wantCal = true; n++; } });
+    commit(); toast(n ? `Enviando ${n} a Google Calendar` : 'Ya estaban todos');
   } else if (a === 'install' && installEvt) {
     installEvt.prompt(); installEvt.userChoice.finally(() => { installEvt = null; render(); });
   }
@@ -939,15 +971,16 @@ function openSheet({ id, date, text } = {}) {
   $('#nlChips').innerHTML = ''; $('#nlHint').hidden = !!editing;
   $('#sheetTitle').textContent = editing ? 'Editar' : 'Nuevo recordatorio';
   $('#editActions').hidden = !editing;
-  $('#calProviderHint').textContent = PROVIDERS[state.settings.calProvider];
+  $('#calProviderHint').textContent = cloud.connected() ? 'Google Calendar · se crea solo, con aviso' : PROVIDERS[state.settings.calProvider];
   if (editing) {
     const d = new Date(editing.due);
     f.title.value = editing.title; f.notes.value = editing.notes || '';
     f.date.value = ymd(d); f.time.value = hm(d);
     f.repeat.value = editing.repeat || 'none'; f.alert.value = String(editing.alert || 0);
-    f.priority.checked = !!editing.priority; f.cal.checked = false;
+    f.priority.checked = !!editing.priority; f.cal.checked = !!(editing.wantCal || editing.calEventId);
     cat = editing.cat || 'personal';
-    $('#fCal').closest('.toggle-row').hidden = true;
+    $('#fCal').closest('.toggle-row').hidden = !cloud.connected();
+    $('#btnAddCal').hidden = cloud.connected();
   } else {
     const d = defaultWhen();
     if (date) {
@@ -996,12 +1029,13 @@ sheet.addEventListener('submit', e => {
     const changedTime = r.due !== due || r.alert !== data.alert;
     Object.assign(r, data);
     if (changedTime) { r.firedAt = null; r.snoozeUntil = null; }
+    if (cloud.connected()) r.wantCal = f.cal.checked;
     toast('Guardado');
   } else {
     r = { id: uid(), createdAt: Date.now(), done: false, doneAt: null, firedAt: null, snoozeUntil: null, inCal: false, ...data };
     if (due < Date.now()) r.firedAt = due - r.alert * MIN; // no avisar de algo creado en el pasado
     state.reminders.push(r);
-    if (f.cal.checked) sendToCalendar(r);
+    if (f.cal.checked) { if (cloud.connected()) r.wantCal = true; else sendToCalendar(r); }
     toast('Recordatorio creado', `${dayLabel(new Date(due))} · ${fmtTime(new Date(due))}`);
     // Salta al día en el calendario si estamos ahí
     calSel = startOfDay(new Date(due)); calMonth = new Date(calSel.getFullYear(), calSel.getMonth(), 1);
@@ -1034,14 +1068,259 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   });
 }
 
+
+/* =========================================================
+   Cuenta de Google: sincronización (Drive, carpeta privada de la app)
+   y eventos automáticos en Google Calendar. Sin servidores propios.
+   ========================================================= */
+const cloud = (() => {
+  const CLIENT_ID = '45625838324-6vvmo4v7faid1jecsm5sku2kk9a0k20n.apps.googleusercontent.com';
+  const SCOPES = 'openid email https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/calendar.events';
+  const REDIRECT = location.origin + location.pathname;
+  const AKEY = 'reminder.auth';
+  const FILE = 'reminder-data.json';
+  const CAL = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
+  const GCOLOR = { personal: '6', trabajo: '7', casa: '10', salud: '4', finanzas: '9', otros: '8' };
+  let auth = {};
+  try { auth = JSON.parse(localStorage.getItem(AKEY)) || {}; } catch (e) { }
+  let status = 'idle', lastError = '', busy = false, again = false, timer = null;
+  const saveAuth = () => { try { localStorage.setItem(AKEY, JSON.stringify(auth)); } catch (e) { } };
+  const valid = () => !!auth.token && auth.exp > Date.now() + 60e3;
+  const connected = () => !!auth.connected;
+
+  function signIn(silent) {
+    const st = uid();
+    try { sessionStorage.setItem('reminder.oauth', st); } catch (e) { }
+    const p = new URLSearchParams({ client_id: CLIENT_ID, redirect_uri: REDIRECT, response_type: 'token', scope: SCOPES, include_granted_scopes: 'true', state: st });
+    if (silent) p.set('prompt', 'none'); else p.set('prompt', 'select_account');
+    if (auth.email) p.set('login_hint', auth.email);
+    location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + p.toString();
+  }
+
+  // Devuelve true si la página se va a Google (para no seguir arrancando)
+  function boot() {
+    const h = location.hash;
+    if (/access_token=|error=/.test(h)) {
+      const q = new URLSearchParams(h.slice(1));
+      history.replaceState(null, '', location.pathname + location.search);
+      let expected = null; try { expected = sessionStorage.getItem('reminder.oauth'); } catch (e) { }
+      if (q.get('state') && q.get('state') === expected) {
+        if (q.get('access_token')) {
+          const granted = q.get('scope') || '';
+          const wasConnected = auth.connected;
+          auth.token = q.get('access_token');
+          auth.exp = Date.now() + (+q.get('expires_in') || 3600) * 1000;
+          auth.connected = true; auth.needsReconnect = false;
+          auth.calOk = granted.includes('calendar.events');
+          auth.driveOk = granted.includes('drive.appdata');
+          saveAuth();
+          try { sessionStorage.removeItem('reminder.silent'); } catch (e) { }
+          if (!wasConnected) {
+            state.settings.autoCal = true;
+            state.reminders.forEach(r => { if (!r.done && !r.inCal && r.due > Date.now() - DAY) r.wantCal = true; });
+            stamp(); persist();
+            setTimeout(async () => {
+              await fetchEmail();
+              toast('Cuenta conectada', auth.email || 'Google');
+              if (!auth.driveOk || !auth.calOk) toast('Faltan permisos', 'Vuelve a conectar y marca las casillas de Drive y Calendar.');
+            }, 2700);
+          }
+        } else if (q.get('error')) {
+          if (auth.connected) { auth.needsReconnect = true; saveAuth(); }
+          else setTimeout(() => toast('No se conectó', 'Se canceló el acceso a Google.'), 2700);
+        }
+      }
+      return false;
+    }
+    return refreshIfNeeded();
+  }
+
+  async function api(url, opts = {}) {
+    if (!valid()) throw new Error('auth');
+    const res = await fetch(url, { ...opts, headers: { Authorization: 'Bearer ' + auth.token, ...(opts.headers || {}) } });
+    if (res.status === 401) { auth.token = null; saveAuth(); throw new Error('auth'); }
+    if (!res.ok && ![404, 409, 410].includes(res.status)) throw new Error('HTTP ' + res.status + ' ' + (await res.text()).slice(0, 160));
+    return res;
+  }
+  async function fetchEmail() {
+    try { const r = await api('https://openidconnect.googleapis.com/v1/userinfo'); const j = await r.json(); auth.email = j.email; saveAuth(); render(); } catch (e) { }
+  }
+
+  /* --- Drive: un único archivo en la carpeta privada de la app --- */
+  async function findFile() {
+    const q = encodeURIComponent(`name='${FILE}'`);
+    const r = await api(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${q}&fields=files(id)&orderBy=modifiedTime desc`);
+    const j = await r.json(); return (j.files && j.files[0] && j.files[0].id) || null;
+  }
+  async function pull() {
+    if (!auth.fileId) { auth.fileId = await findFile(); saveAuth(); }
+    if (!auth.fileId) return null;
+    const r = await api(`https://www.googleapis.com/drive/v3/files/${auth.fileId}?alt=media`);
+    if (r.status === 404) { auth.fileId = null; saveAuth(); return null; }
+    return r.json();
+  }
+  async function push(data) {
+    const body = JSON.stringify(data);
+    if (!auth.fileId) {
+      const b = 'rmd' + uid();
+      const meta = { name: FILE, parents: ['appDataFolder'], mimeType: 'application/json' };
+      const mp = `--${b}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${b}\r\nContent-Type: application/json\r\n\r\n${body}\r\n--${b}--`;
+      const r = await api('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', { method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + b }, body: mp });
+      auth.fileId = (await r.json()).id; saveAuth();
+    } else {
+      await api(`https://www.googleapis.com/upload/drive/v3/files/${auth.fileId}?uploadType=media`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body });
+    }
+  }
+  const payload = () => ({ v: 1, app: 'Reminder', at: Date.now(), reminders: state.reminders, tombstones: state.tombstones, profile: { name: state.settings.name } });
+  function merge(remote) {
+    const tomb = { ...(remote.tombstones || {}) };
+    for (const [id, t] of Object.entries(state.tombstones)) tomb[id] = Math.max(tomb[id] || 0, t);
+    const map = new Map();
+    const ts = r => r.updatedAt || r.createdAt || 0;
+    for (const r of (remote.reminders || [])) if (r && r.id) map.set(r.id, r);
+    for (const r of state.reminders) { const ex = map.get(r.id); if (!ex || ts(r) > ts(ex)) map.set(r.id, r); }
+    for (const [id, r] of map) if (tomb[id] && tomb[id] >= ts(r)) {
+      if (r.calEventId && state.reminders.some(x => x.id === id)) state.calTrash.push(r.calEventId);
+      map.delete(id);
+    }
+    state.reminders = [...map.values()];
+    state.tombstones = tomb;
+    if (!state.settings.name && remote.profile && remote.profile.name) state.settings.name = remote.profile.name;
+  }
+
+  /* --- Calendar: un evento por recordatorio, con su id fijo para no duplicar --- */
+  const evId = id => 'rmd' + [...id].map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join('');
+  const calSig = r => JSON.stringify([r.title, r.notes || '', r.repeat || 'none', r.alert || 0, r.cat, !!r.done,
+    (r.repeat && r.repeat !== 'none') ? hm(new Date(r.due)) + '|' + r.anchorDay : r.due]);
+  function localISO(ms) { const d = new Date(ms); return `${ymd(d)}T${hm(d)}:00`; }
+  function eventBody(r) {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Madrid';
+    const ev = {
+      status: 'confirmed',
+      summary: (r.done ? '✓ ' : '') + r.title,
+      description: (r.notes ? r.notes + '\n\n' : '') + 'Creado con Reminder 🔔',
+      start: { dateTime: localISO(r.due), timeZone: tz },
+      end: { dateTime: localISO(r.due + 30 * MIN), timeZone: tz },
+      reminders: r.done ? { useDefault: false, overrides: [] } : { useDefault: false, overrides: [{ method: 'popup', minutes: r.alert || 0 }] },
+      colorId: GCOLOR[r.cat] || '8',
+      extendedProperties: { private: { reminderId: r.id } },
+      transparency: 'transparent',
+    };
+    if (!r.done && rrule(r)) ev.recurrence = ['RRULE:' + rrule(r)];
+    return ev;
+  }
+  async function calSync() {
+    if (!auth.calOk) return;
+    // Borrados pendientes
+    const trash = [...new Set(state.calTrash)];
+    for (const id of trash) { await api(`${CAL}/${id}`, { method: 'DELETE' }); state.calTrash = state.calTrash.filter(x => x !== id); }
+    for (const r of state.reminders) {
+      if (r.wantCal && !r.calEventId && !r.done) {
+        const id = evId(r.id);
+        let res = await api(`${CAL}?sendUpdates=none`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ...eventBody(r) }) });
+        if (res.status === 409) res = await api(`${CAL}/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(eventBody(r)) });
+        r.calEventId = id; r.calSig = calSig(r); r.inCal = true; r.updatedAt = Date.now();
+      } else if (r.calEventId && r.wantCal === false) {
+        await api(`${CAL}/${r.calEventId}`, { method: 'DELETE' });
+        r.calEventId = null; r.calSig = null; r.inCal = false; r.updatedAt = Date.now();
+      } else if (r.calEventId && r.calSig !== calSig(r)) {
+        const res = await api(`${CAL}/${r.calEventId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(eventBody(r)) });
+        if (res.status === 404 || res.status === 410) { r.calEventId = null; r.calSig = null; r.inCal = false; if (r.done) r.wantCal = false; }
+        else r.calSig = calSig(r);
+        r.updatedAt = Date.now();
+      }
+    }
+  }
+
+  async function sync(manual) {
+    if (!connected()) return;
+    if (!valid()) { status = 'auth'; render(); if (manual) signIn(!auth.needsReconnect); return; }
+    if (busy) { again = true; return; }
+    busy = true; status = 'syncing'; if (tab === 'settings') render();
+    try {
+      stamp(); // recoge cambios locales aún sin sello
+      if (auth.driveOk !== false) {
+        const remote = await pull();
+        const before = JSON.stringify([state.reminders, state.tombstones]);
+        if (remote) { merge(remote); }
+        await calSync();
+        setBaseline();
+        persist();
+        const after = JSON.stringify(payload().reminders) + JSON.stringify(state.tombstones);
+        const remoteStr = remote ? JSON.stringify(remote.reminders) + JSON.stringify(remote.tombstones || {}) : '';
+        if (after !== remoteStr) await push(payload());
+        if (before !== JSON.stringify([state.reminders, state.tombstones])) render();
+      } else {
+        await calSync(); stamp(); persist();
+      }
+      auth.lastSync = Date.now(); saveAuth();
+      status = 'ok'; lastError = '';
+      if (manual) toast('Sincronizado');
+    } catch (e) {
+      status = e.message === 'auth' ? 'auth' : 'error'; lastError = e.message;
+      if (manual) toast(status === 'auth' ? 'Hay que volver a conectar' : 'No se pudo sincronizar', status === 'auth' ? '' : 'Lo reintentaré en un momento.');
+      console.warn('Reminder sync', e);
+    } finally {
+      busy = false; render();
+      if (again) { again = false; setTimeout(sync, 400); }
+    }
+  }
+  function refreshIfNeeded() {
+    if (!auth.connected || valid() || auth.needsReconnect || !navigator.onLine) return false;
+    if (document.body.classList.contains('sheet-open')) return false;
+    let tried = false; try { tried = sessionStorage.getItem('reminder.silent') === '1'; sessionStorage.setItem('reminder.silent', '1'); } catch (e) { tried = true; }
+    if (tried) return false;
+    signIn(true); return true;
+  }
+  function schedule() { if (!connected()) return; clearTimeout(timer); timer = setTimeout(sync, 1500); }
+
+  async function signOut() {
+    const t = auth.token;
+    auth = {}; saveAuth(); try { localStorage.removeItem(AKEY); } catch (e) { }
+    if (t) fetch('https://oauth2.googleapis.com/revoke?token=' + encodeURIComponent(t), { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }).catch(() => { });
+    state.settings.autoCal = false; persist();
+    render(); toast('Cuenta desconectada', 'Tus recordatorios siguen en este dispositivo.');
+  }
+
+  function settingsCard() {
+    const g = '<svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:none"><path fill="#4285F4" d="M22.6 12.2c0-.8-.1-1.5-.2-2.2H12v4.3h6a5.1 5.1 0 0 1-2.2 3.3v2.7h3.6c2-1.9 3.2-4.7 3.2-8.1z"/><path fill="#34A853" d="M12 23c3 0 5.5-1 7.4-2.7l-3.6-2.7c-1 .7-2.3 1.1-3.8 1.1-2.9 0-5.4-2-6.3-4.6H2v2.8A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.7 14.1a6.6 6.6 0 0 1 0-4.2V7.1H2a11 11 0 0 0 0 9.8l3.7-2.8z"/><path fill="#EA4335" d="M12 5.4c1.6 0 3.1.6 4.2 1.7l3.2-3.2A11 11 0 0 0 2 7.1l3.7 2.8C6.6 7.3 9.1 5.4 12 5.4z"/></svg>';
+    if (!connected()) return `<div class="card">
+      <h4>Cuenta</h4>
+      <div class="row" style="flex-wrap:wrap"><span class="rl" style="flex:1;min-width:200px"><b>Tus recordatorios en todos tus dispositivos</b><small>Conecta tu Google: se guardan en tu Drive (carpeta privada de la app) y se crean solos en tu Google Calendar, con su aviso aunque Reminder esté cerrada.</small></span>
+      <button class="btn gbtn" data-set="gConnect">${g} Conectar con Google</button></div>
+    </div>`;
+    const when = auth.lastSync ? relLabel(auth.lastSync) : '—';
+    const st = status === 'syncing' ? 'Sincronizando…'
+      : auth.needsReconnect ? 'Hay que volver a conectar'
+      : status === 'auth' ? 'Acceso caducado: pulsa Sincronizar para renovarlo'
+      : status === 'error' ? 'Sin conexión con Google, reintentando'
+      : `Sincronizado ${when}`;
+    const warn = status === 'auth' || auth.needsReconnect || status === 'error';
+    return `<div class="card">
+      <h4>Cuenta</h4>
+      <div class="row"><span class="rl"><b style="display:flex;align-items:center;gap:8px">${g}${esc(auth.email || 'Cuenta de Google')}</b><small style="${warn ? 'color:var(--overdue)' : ''}">${st}</small></span>
+        ${auth.needsReconnect ? '<button class="btn primary" data-set="gConnect">Reconectar</button>' : '<button class="btn" data-set="gSync">Sincronizar</button>'}</div>
+      ${auth.driveOk === false || auth.calOk === false ? `<div class="row"><span class="rl"><small style="color:var(--overdue)">Falta permiso de ${auth.driveOk === false ? 'Drive' : 'Calendar'}. Pulsa «Reconectar» y marca todas las casillas.</small></span><button class="btn" data-set="gConnect">Reconectar</button></div>` : ''}
+      <div class="row"><span class="rl"><b>Desconectar</b><small>Los datos se quedan en este dispositivo y en tu Drive</small></span><button class="btn ghost danger" data-set="gDisconnect">Desconectar</button></div>
+    </div>`;
+  }
+
+  return { boot, sync, schedule, refreshIfNeeded, signIn, signOut, connected, settingsCard, status: () => status };
+})();
+
 /* ---------- Arranque ---------- */
 function boot() {
   applyTheme();
+  setBaseline();
+  if (cloud.boot()) return; // redirigiendo a Google para renovar el acceso
   const params = new URLSearchParams(location.search);
   setTab(params.get('tab') || 'home', { push: false });
   setInterval(tick, 1000);
   setInterval(checkAlarms, 15000);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) { checkAlarms(); render(); } });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { if (cloud.refreshIfNeeded()) return; checkAlarms(); render(); cloud.sync(); } });
+  window.addEventListener('online', () => cloud.sync());
+  setInterval(() => { if (!document.hidden) cloud.sync(); }, 60000);
+  cloud.sync();
   ['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, unlockAudio, { once: true, passive: true }));
 
   // Pantalla de carga: 2,6 s exactos
@@ -1058,6 +1337,6 @@ function boot() {
 }
 
 // Para pruebas
-window.__reminder = { parseNL, state: () => state };
+window.__reminder = { parseNL, state: () => state, cloud: () => cloud };
 boot();
 })();

@@ -470,3 +470,7 @@ body.sheet-open #fab svg { transform: rotate(45deg); }
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
   .loader span { animation-duration: 2.4s !important; }
 }
+
+/* Botón de Google */
+.gbtn { background: #fff; color: #1f1f1f; border: 1px solid #dadce0; gap: 10px; }
+[data-theme="dark"] .gbtn { background: #131314; color: #e3e3e3; border-color: #8e918f; }
