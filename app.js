@@ -538,8 +538,12 @@ function renderHome() {
   const overdue = list.filter(r => r.due < now);
   const upcoming = list.filter(r => r.due >= now);
   const next = upcoming[0];
-  const todayCount = list.filter(r => r.due >= today0 && r.due < tomorrow0).length;
-  const weekCount = list.filter(r => r.due >= now && r.due < now + 7 * DAY).length;
+  // Hoy · semana natural (lunes a domingo) · mes natural, contando también las repeticiones
+  const countIn = (s, e) => state.reminders.reduce((n, r) => n + (r.done ? 0 : occurrencesBetween(r, +s, +e).length), 0);
+  const t0 = startOfDay(new Date()), w0 = addDays(t0, -((t0.getDay() + 6) % 7));
+  const todayCount = countIn(t0, addDays(t0, 1));
+  const weekCount = countIn(w0, addDays(w0, 7));
+  const monthCount = countIn(new Date(t0.getFullYear(), t0.getMonth(), 1), new Date(t0.getFullYear(), t0.getMonth() + 1, 1));
 
   let hero;
   if (next) {
@@ -586,9 +590,9 @@ function renderHome() {
       <div class="greet"><h1>${greeting()}</h1><p>${fmtLong(new Date())}</p></div>
       ${hero}
       <div class="stats">
-        <div class="stat"><b>${todayCount}</b><span>Hoy</span></div>
-        <div class="stat"><b>${weekCount}</b><span>7 días</span></div>
-        <div class="stat ${overdue.length ? 'warn' : ''}"><b>${overdue.length}</b><span>Atrasados</span></div>
+        <button class="stat" data-period="day"><b>${todayCount}</b><span>Hoy</span></button>
+        <button class="stat" data-period="week"><b>${weekCount}</b><span>Semanal</span></button>
+        <button class="stat" data-period="month"><b>${monthCount}</b><span>Mensual</span></button>
       </div>
     </div>
     <div class="home-main">${lists}</div>
@@ -602,7 +606,7 @@ function fitHome() {
   const wraps = $$('.item-wrap', main);
   // Cabe hasta justo encima del botón +; lo demás está en la pestaña Recordatorios
   const fab = $('#fab').getBoundingClientRect();
-  const limit = (fab.top > 0 ? fab.top : window.innerHeight - 110) - 6;
+  const limit = (fab.top > 0 ? fab.top : window.innerHeight - 110) + 22; // la fila puede rozar el borde del + sin tapar nada
   const bottoms = wraps.map(w => w.getBoundingClientRect().bottom + window.scrollY);
   let cut = false;
   wraps.forEach((w, i) => { if (cut || (i >= 1 && bottoms[i] > limit)) { w.hidden = true; cut = true; } });
@@ -873,6 +877,8 @@ $('#views').addEventListener('click', e => {
     else if (a === 'edit' && id) openSheet({ id });
     return;
   }
+  const per = t.closest('[data-period]');
+  if (per) { listMode = per.dataset.period; listAnchor = startOfDay(new Date()); setTab('list'); return; }
   const go = t.closest('[data-goto]');
   if (go) { if (go.dataset.goto === 'list') listMode = 'all'; setTab(go.dataset.goto); return; }
   const lm = t.closest('[data-lmode]');

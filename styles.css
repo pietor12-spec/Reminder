@@ -516,3 +516,8 @@ html.lock main { padding-bottom: 0; }
 #view-home .group { margin-bottom: 12px; }
 #view-home .group-title { margin-bottom: 6px; }
 #view-home .item { padding: 11px 14px; }
+
+/* Contadores de Inicio pulsables */
+button.stat { text-align: left; cursor: pointer; transition: border-color .2s, transform .15s; }
+button.stat:hover { border-color: var(--brand-2); }
+button.stat:active { transform: scale(.97); }
