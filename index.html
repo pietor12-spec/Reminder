@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Reminder</title>
+  <meta name="description" content="Reminder — recordatorios simples y elegantes.">
+  <meta name="theme-color" content="#0B1220">
+  <meta name="color-scheme" content="light dark">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Reminder">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="icons/logo.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    // Aplica el tema antes de pintar para evitar parpadeo
+    (function () {
+      try {
+        var s = JSON.parse(localStorage.getItem('reminder.v1') || '{}');
+        var t = (s.settings && s.settings.theme) || 'auto';
+        if (t === 'auto') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        document.documentElement.dataset.theme = t;
+      } catch (e) { document.documentElement.dataset.theme = 'dark'; }
+    })();
+  </script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <linearGradient id="brandGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#FFC24B"/><stop offset="1" stop-color="#FF6B4A"/>
+      </linearGradient>
+      <symbol id="bell" viewBox="0 0 512 512">
+        <path d="M256 92c-13.6 0-24 10.4-24 24v9.6C173 137 136 188 136 248v68l-32 44c-5.6 8 0 20 10.4 20h283.2c10.4 0 16-12 10.4-20l-32-44v-68c0-60-37-111-96-122.4V116c0-13.6-10.4-24-24-24z"/>
+        <path d="M214 400a42 42 0 0 0 84 0z"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <!-- Pantalla de carga (2,6 s) -->
+  <div id="splash" aria-hidden="true">
+    <div class="splash-inner">
+      <div class="splash-logo">
+        <span class="ring r1"></span><span class="ring r2"></span>
+        <div class="app-icon big"><svg class="bell-swing"><use href="#bell"/></svg></div>
+      </div>
+      <div class="wordmark">Reminder</div>
+      <div class="loader"><span></span></div>
+    </div>
+  </div>
+
+  <div id="app" hidden>
+    <header class="topbar">
+      <button id="bellBtn" class="brand" aria-haspopup="true" aria-expanded="false" aria-label="Abrir menú">
+        <span class="app-icon"><svg><use href="#bell"/></svg><i class="badge" id="bellBadge" hidden></i></span>
+        <span class="brand-text">
+          <span class="wordmark small">Reminder</span>
+          <span class="tab-label" id="tabLabel">Inicio</span>
+        </span>
+        <svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="top-actions">
+        <button class="icon-btn" id="searchBtn" aria-label="Buscar"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></button>
+        <button class="icon-btn" id="themeBtn" aria-label="Cambiar tema">
+          <svg class="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          <svg class="i-moon" viewBox="0 0 24 24"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Menú desplegable de la campana -->
+    <div id="menuScrim" class="scrim"></div>
+    <nav id="bellMenu" aria-label="Pestañas">
+      <button data-tab="home"><span class="mi"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg></span><span class="ml"><b>Inicio</b><small>Lo próximo</small></span><em data-count="home"></em></button>
+      <button data-tab="calendar"><span class="mi"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span><span class="ml"><b>Calendario</b><small>Tu mes de un vistazo</small></span><em data-count="calendar"></em></button>
+      <button data-tab="done"><span class="mi"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span class="ml"><b>Hecho</b><small>Lo que ya tachaste</small></span><em data-count="done"></em></button>
+      <button data-tab="settings"><span class="mi"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></span><span class="ml"><b>Ajustes</b><small>Tema, calendario, avisos</small></span><em></em></button>
+    </nav>
+
+    <div id="searchBar" class="searchbar" hidden>
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input id="searchInput" type="search" placeholder="Buscar recordatorios…" autocomplete="off">
+      <button class="link" id="searchClose">Cerrar</button>
+    </div>
+
+    <main id="views">
+      <section class="view" id="view-home"></section>
+      <section class="view" id="view-calendar" hidden></section>
+      <section class="view" id="view-done" hidden></section>
+      <section class="view" id="view-settings" hidden></section>
+    </main>
+
+    <button id="fab" aria-label="Nuevo recordatorio"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+  </div>
+
+  <!-- Hoja de nuevo / editar recordatorio -->
+  <div id="sheetScrim" class="scrim"></div>
+  <form id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" autocomplete="off">
+    <div class="grabber"></div>
+    <div class="sheet-head">
+      <button type="button" class="link" id="sheetCancel">Cancelar</button>
+      <h2 id="sheetTitle">Nuevo recordatorio</h2>
+      <button type="submit" class="link strong" id="sheetSave">Guardar</button>
+    </div>
+
+    <div class="sheet-body">
+      <div class="title-wrap">
+        <input id="fTitle" class="title-input" placeholder="¿Qué quieres recordar?" maxlength="140" required>
+        <div class="nl-hint" id="nlHint">Escribe natural: <i>«Llamar al dentista mañana a las 10»</i></div>
+        <div class="nl-chips" id="nlChips"></div>
+      </div>
+      <textarea id="fNotes" class="notes-input" placeholder="Notas (opcional)" rows="2" maxlength="1000"></textarea>
+
+      <div class="field">
+        <label><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Fecha</label>
+        <div class="chips" id="dateChips"></div>
+        <input type="date" id="fDate" required>
+      </div>
+
+      <div class="field">
+        <label><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Hora</label>
+        <div class="chips" id="timeChips"></div>
+        <input type="time" id="fTime" required>
+      </div>
+
+      <div class="grid2">
+        <div class="field">
+          <label><svg viewBox="0 0 24 24"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></svg>Repetir</label>
+          <select id="fRepeat">
+            <option value="none">Nunca</option>
+            <option value="daily">Cada día</option>
+            <option value="weekdays">Lunes a viernes</option>
+            <option value="weekly">Cada semana</option>
+            <option value="monthly">Cada mes</option>
+            <option value="yearly">Cada año</option>
+          </select>
+        </div>
+        <div class="field">
+          <label><svg class="fill" viewBox="0 0 512 512"><use href="#bell"/></svg>Avisar</label>
+          <select id="fAlert">
+            <option value="0">A la hora</option>
+            <option value="5">5 min antes</option>
+            <option value="15">15 min antes</option>
+            <option value="30">30 min antes</option>
+            <option value="60">1 hora antes</option>
+            <option value="1440">1 día antes</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label><svg viewBox="0 0 24 24"><path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>Categoría</label>
+        <div class="cats" id="catPicker"></div>
+      </div>
+
+      <label class="toggle-row">
+        <span><b>Importante</b><small>Se queda arriba y con marca</small></span>
+        <input type="checkbox" id="fPriority"><i class="switch"></i>
+      </label>
+      <label class="toggle-row">
+        <span><b>Añadir a mi calendario</b><small id="calProviderHint">Google Calendar</small></span>
+        <input type="checkbox" id="fCal"><i class="switch"></i>
+      </label>
+
+      <div class="sheet-actions" id="editActions" hidden>
+        <button type="button" class="btn ghost" id="btnAddCal">Enviar al calendario</button>
+        <button type="button" class="btn ghost danger" id="btnDelete">Eliminar</button>
+      </div>
+    </div>
+  </form>
+
+  <div id="toasts" aria-live="polite"></div>
+  <input type="file" id="importFile" accept="application/json,.json" hidden>
+
+  <script src="app.js"></script>
+</body>
+</html>
