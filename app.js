@@ -41,8 +41,9 @@ function relLabel(ms, now = Date.now()) {
   const diff = ms - now, a = Math.abs(diff);
   const dir = diff >= 0;
   if (a < MIN) return dir ? 'ahora' : 'hace un momento';
-  if (a < HOUR) { const m = Math.round(a / MIN); return dir ? `en ${m} min` : `hace ${m} min`; }
-  if (a < DAY && sameDay(new Date(ms), new Date(now))) { const h = Math.floor(a / HOUR), m = Math.round((a % HOUR) / MIN); return (dir ? 'en ' : 'hace ') + h + ' h' + (m && h < 6 ? ` ${m} min` : ''); }
+  const tm = Math.round(a / MIN);
+  if (tm < 60) return dir ? `en ${tm} min` : `hace ${tm} min`;
+  if (a < DAY && sameDay(new Date(ms), new Date(now))) { const h = Math.floor(tm / 60), m = tm % 60; return (dir ? 'en ' : 'hace ') + h + ' h' + (m && h < 6 ? ` ${m} min` : ''); }
   const d = new Date(ms);
   return `${dayLabel(d)} · ${fmtTime(d)}`;
 }
@@ -433,6 +434,7 @@ function openMenu(open) {
 }
 function setTab(t, { push = true } = {}) {
   if (!TABS[t]) t = 'home';
+  if (t === 'calendar' && tab !== 'calendar') { calSel = startOfDay(new Date()); calMonth = new Date(calSel.getFullYear(), calSel.getMonth(), 1); }
   tab = t; openMenu(false);
   $$('.view').forEach(v => { v.hidden = v.id !== 'view-' + t; });
   const v = $('#view-' + t); v.classList.remove('enter'); void v.offsetWidth; v.classList.add('enter');
@@ -529,7 +531,7 @@ function renderHome() {
   if (query) {
     const q = deacc(query);
     const hits = state.reminders.filter(r => deacc(r.title + ' ' + (r.notes || '')).includes(q)).sort((a, b) => (a.done - b.done) || a.due - b.due);
-    v.innerHTML = `<div class="group"><div class="group-title">Resultados <span>${hits.length}</span></div>
+    v.innerHTML = `<div class="group"><div class="group-title">Resultados</div>
       <div class="list">${hits.map(r => itemHTML(r, r.due, { showDay: true })).join('') || `<p class="empty" style="padding:20px;color:var(--muted)">Nada con «${esc(query)}»</p>`}</div></div>`;
     return;
   }
@@ -567,7 +569,7 @@ function renderHome() {
   ].filter(g => g[1].length);
 
   const lists = groups.length ? groups.map(([t, arr, cls]) => `
-    <div class="group"><div class="group-title ${cls || ''}">${t}<span>${arr.length}</span></div>
+    <div class="group"><div class="group-title ${cls || ''}">${t}</div>
     <div class="list">${arr.sort(sortRem).map(r => itemHTML(r, r.due, { showDay: !['Hoy', 'Mañana', 'Atrasados'].includes(t) || (t === 'Atrasados' && !sameDay(new Date(r.due), new Date())) })).join('')}</div></div>`).join('')
     : `<div class="empty">
         <span class="app-icon"><svg><use href="#bell"/></svg></span>
@@ -620,9 +622,12 @@ function renderCalendar() {
   let cells = ['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(d => `<div class="dow">${d}</div>`).join('');
   for (let i = 0; i < 42; i++) {
     const d = addDays(gridStart, i), k = ymd(d), occ = map.get(k) || [];
-    const dots = occ.slice(0, 3).map(o => `<i style="--d:${o.r.done ? 'var(--faint)' : catColor(o.r.cat)}"></i>`).join('');
-    cells += `<button class="day${d.getMonth() !== mo ? ' other' : ''}${sameDay(d, today) ? ' today' : ''}${sameDay(d, calSel) ? ' sel' : ''}" data-day="${k}" aria-label="${fmtLong(d)}${occ.length ? ', ' + occ.length + ' recordatorios' : ''}">
-      <span class="num">${d.getDate()}</span><span class="dots">${dots}</span></button>`;
+    // Anillo con el color de la categoría; si hay varias, se reparte en segmentos
+    const cols = [...new Set(occ.map(o => o.r.done ? 'var(--faint)' : catColor(o.r.cat)))].slice(0, 4);
+    const ring = cols.length === 1 ? cols[0]
+      : cols.length ? 'conic-gradient(' + cols.map((c, i) => `${c} ${i * 360 / cols.length + 4}deg ${(i + 1) * 360 / cols.length - 4}deg, transparent 0 ${(i + 1) * 360 / cols.length + 4}deg`).join(', ') + ')' : '';
+    cells += `<button class="day${d.getMonth() !== mo ? ' other' : ''}${sameDay(d, today) ? ' today' : ''}${sameDay(d, calSel) ? ' sel' : ''}${occ.length ? ' has' : ''}" data-day="${k}"${ring ? ` style="--ring:${ring}"` : ''} aria-label="${fmtLong(d)}${occ.length ? ', ' + occ.length + ' recordatorios' : ''}">
+      <span class="num"><b>${d.getDate()}</b></span></button>`;
   }
   const selOcc = map.get(ymd(calSel)) || occMap(startOfDay(calSel), addDays(startOfDay(calSel), 1)).get(ymd(calSel)) || [];
   const monthName = cap(calMonth.toLocaleDateString('es-ES', { month: 'long' })) + ' ' + calMonth.getFullYear();
@@ -675,7 +680,7 @@ function renderDone() {
       <div class="stat"><b>${done.length}</b><span>En total</span></div>
     </div>
     <div class="week-bars" aria-label="Completados por día">${perDay.map(p => `<div class="bar${p.n ? '' : ' zero'}" title="${p.n}"><i style="height:${Math.max(6, p.n / max * 100)}%"></i><span>${p.d.toLocaleDateString('es-ES', { weekday: 'narrow' })}</span></div>`).join('')}</div>
-    ${[...groups].map(([k, arr]) => `<div class="group"><div class="group-title">${dayLabel(new Date(k + 'T12:00'))}<span>${arr.length}</span></div><div class="list">${arr.map(r => itemHTML(r)).join('')}</div></div>`).join('')}
+    ${[...groups].map(([k, arr]) => `<div class="group"><div class="group-title">${dayLabel(new Date(k + 'T12:00'))}</div><div class="list">${arr.map(r => itemHTML(r)).join('')}</div></div>`).join('')}
     ${done.length ? `<div style="text-align:center;margin-top:10px"><button class="btn ghost" data-set="clearDone">Vaciar historial</button></div>` : ''}`;
 }
 
@@ -1327,6 +1332,7 @@ function boot() {
   const splash = $('#splash');
   setTimeout(() => {
     const app = $('#app'); app.hidden = false; app.classList.add('enter');
+    app.addEventListener('animationend', e => { if (e.target === app) app.classList.remove('enter'); }, { once: false });
     splash.classList.add('out');
     setTimeout(() => splash.remove(), 500);
     checkAlarms();
