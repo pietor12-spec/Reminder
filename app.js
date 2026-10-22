@@ -907,7 +907,8 @@ function renderSettings() {
     <div class="card">
       <h4>App y datos</h4>
       ${installRow}
-      <div class="row"><span class="rl"><b>Copia de seguridad</b><small>Guárdala o pásala a otro dispositivo</small></span><span style="display:flex;gap:8px"><button class="btn" data-set="export">Exportar</button><button class="btn" data-set="import">Importar</button></span></div>
+      <div class="row"><span class="rl"><b>Copia de seguridad</b><small>Archivo JSON: guárdala o pásala a otro dispositivo</small></span><span style="display:flex;gap:8px"><button class="btn" data-set="export">Exportar</button><button class="btn" data-set="import">Importar</button></span></div>
+      <div class="row"><span class="rl"><b>En texto</b><small>Copia tus recordatorios como texto o pega una lista para añadirla</small></span><span style="display:flex;gap:8px"><button class="btn" data-set="txtOut">Exportar</button><button class="btn" data-set="txtIn">Importar</button></span></div>
       <div class="row"><span class="rl"><b>Borrar todo</b><small>Elimina todos los recordatorios de este dispositivo</small></span><button class="btn danger" data-set="wipe">Borrar</button></div>
     </div>
     <div class="foot"><span class="app-icon"><svg><use href="#bell"/></svg></span>Reminder 1.0 · Tus datos se guardan en este dispositivo</div>
@@ -1036,8 +1037,14 @@ function settingsAction(a) {
     const list = pending();
     if (!list.length) return toast('No hay pendientes que exportar');
     download('reminder.ics', icsFile(list), 'text/calendar');
-  } else if (a === 'export' || a === 'import') {
-    openSave();
+  } else if (a === 'export') {
+    exportJSON();
+  } else if (a === 'import') {
+    $('#importFile').accept = 'application/json,.json'; $('#importFile').click();
+  } else if (a === 'txtOut') {
+    openText('out');
+  } else if (a === 'txtIn') {
+    openText('in');
   } else if (a === 'wipe') {
     if (confirm('¿Borrar todos los recordatorios de este dispositivo? No se puede deshacer.')) { state.reminders = []; commit(); toast('Todo borrado'); }
   } else if (a === 'clearDone') {
@@ -1065,7 +1072,7 @@ function exportJSON() {
   download(`reminder-${ymd(new Date())}.json`, JSON.stringify(data, null, 2), 'application/json');
   toast('Copia JSON descargada', `${state.reminders.length} recordatorios`);
 }
-function exportTXT() {
+function buildTXT() {
   const list = [...state.reminders].sort((x, y) => (x.done - y.done) || x.due - y.due);
   const line = r => { const d = new Date(r.due);
     return [dmy(d), hm(d), r.title, CATS.find(c => c.id === r.cat)?.name || 'Otros', REP_TXT[r.repeat || 'none'], ALERT_TXT[r.alert || 0] || (r.alert + ' min antes'), (r.notes || '').replace(/[\n|]/g, ' '), r.done ? 'hecho' : 'pendiente'].join(' | '); };
@@ -1075,8 +1082,7 @@ function exportTXT() {
     `# Para importar también vale escribir una línea natural: «Llamar al dentista el 5/11 a las 10»`,
     '', ...list.map(line), '',
   ].join('\n');
-  download(`reminder-${ymd(new Date())}.txt`, txt, 'text/plain;charset=utf-8');
-  toast('Copia de texto descargada', `${list.length} recordatorios`);
+  return txt;
 }
 function importJSON(text) {
   const data = JSON.parse(text);
@@ -1141,40 +1147,31 @@ $('#importFile').addEventListener('change', async e => {
   doImport(/\.json$/i.test(file.name) || /^\s*[\[{]/.test(text) ? 'json' : 'txt', text);
   e.target.value = '';
 });
-function openSave() {
-  openMenu(false);
-  const n = state.reminders.length;
+function openText(mode) {
+  const out = mode === 'out';
   $('#saveBox').innerHTML = `<div class="save-card">
-    <div class="save-head"><span class="save-ico">💾</span><div><h3>Guardado</h3><small>${n} recordatorio${n === 1 ? '' : 's'} en este dispositivo</small></div>
+    <div class="save-head"><div><h3>${out ? 'Exportar en texto' : 'Importar texto'}</h3>
+      <small>${out ? 'Copia el texto y guárdalo donde quieras' : 'Una por línea, en el formato exportado o en frase normal'}</small></div>
       <button class="icon-btn" data-sv="close" aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
-    <h4>Exportar</h4>
-    <div class="save-row">
-      <button class="save-opt" data-sv="exp-json"><b>JSON</b><small>Copia completa para restaurar</small></button>
-      <button class="save-opt" data-sv="exp-txt"><b>Texto</b><small>Legible, para leer o editar</small></button>
-    </div>
-    <h4>Importar</h4>
-    <div class="save-row">
-      <button class="save-opt" data-sv="imp-json"><b>JSON</b><small>Desde una copia .json</small></button>
-      <button class="save-opt" data-sv="imp-txt"><b>Texto</b><small>Desde un archivo .txt</small></button>
-    </div>
-    <details class="paste"><summary>…o pega aquí el texto</summary>
-      <textarea id="pasteTxt" rows="4" placeholder="Una por línea:\nLlamar al dentista el 5/11 a las 10\nPagar el alquiler el 1 de noviembre a las 9 cada mes"></textarea>
-      <button class="btn primary" data-sv="paste">Importar texto</button>
-    </details>
+    <textarea id="pasteTxt" class="txt-box" rows="10" spellcheck="false" ${out ? 'readonly' : ''} placeholder="Llamar al dentista el 12/11 a las 9\nPagar el alquiler el 1 de noviembre a las 9 cada mes\n26/10/2026 | 11:00 | Fianza Gobierno Vasco | Casa"></textarea>
+    ${out ? `<button class="btn primary txt-act" data-sv="copy">Copiar texto</button>` : `<button class="btn primary txt-act" data-sv="paste">Importar</button>`}
     <div class="save-result" id="saveResult" hidden></div>
   </div>`;
+  if (out) $('#pasteTxt').value = buildTXT();
   $('#saveBox').classList.add('show');
+  if (!out) setTimeout(() => $('#pasteTxt').focus(), 300);
 }
-$('#saveBtn').addEventListener('click', openSave);
-$('#saveBox').addEventListener('click', e => {
+$('#saveBox').addEventListener('click', async e => {
   if (e.target === $('#saveBox')) { $('#saveBox').classList.remove('show'); return; }
   const b = e.target.closest('[data-sv]'); if (!b) return;
   const a = b.dataset.sv;
   if (a === 'close') $('#saveBox').classList.remove('show');
-  else if (a === 'exp-json') exportJSON();
-  else if (a === 'exp-txt') exportTXT();
-  else if (a === 'imp-json') { $('#importFile').accept = 'application/json,.json'; $('#importFile').click(); }
-  else if (a === 'imp-txt') { $('#importFile').accept = 'text/plain,.txt,.csv'; $('#importFile').click(); }
+  else if (a === 'copy') {
+    const ta = $('#pasteTxt');
+    try { await navigator.clipboard.writeText(ta.value); }
+    catch (err) { ta.removeAttribute('readonly'); ta.select(); document.execCommand('copy'); ta.setAttribute('readonly', ''); }
+    b.textContent = '✓ Copiado'; setTimeout(() => { b.textContent = 'Copiar texto'; }, 1800);
+  }
   else if (a === 'paste') { const t = $('#pasteTxt').value.trim(); if (t) doImport(/^\s*[\[{]/.test(t) ? 'json' : 'txt', t); }
 });
 
