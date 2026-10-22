@@ -562,3 +562,12 @@ button.stat:active { transform: scale(.97); }
 .mic-live i { width: 3px; height: 12px; border-radius: 2px; background: var(--accent-ink); animation: bars .8s ease-in-out infinite; }
 .mic-live i:nth-child(2) { animation-delay: .15s; } .mic-live i:nth-child(3) { animation-delay: .3s; }
 @keyframes bars { 0%, 100% { transform: scaleY(.35); } 50% { transform: scaleY(1); } }
+
+/* Datos que faltan */
+.sheet-head { position: relative; }
+#sheetSave:disabled { color: var(--faint); cursor: not-allowed; }
+.missing { position: absolute; right: 18px; top: calc(100% - 4px); font-size: 11.5px; font-weight: 700; color: var(--overdue); }
+.field input.need { border-color: color-mix(in srgb, var(--overdue) 55%, transparent); border-style: dashed; }
+.voice-status { margin-top: 8px; padding: 8px 12px; border-radius: 12px; font-size: 13px; font-weight: 700; }
+.voice-status.ok { background: color-mix(in srgb, var(--c-casa) 16%, transparent); color: var(--c-casa); }
+.voice-status.warn { background: color-mix(in srgb, var(--overdue) 14%, transparent); color: var(--overdue); }

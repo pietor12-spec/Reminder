@@ -1073,7 +1073,7 @@ const f = { title: $('#fTitle'), notes: $('#fNotes'), date: $('#fDate'), time: $
 let editing = null, cat = 'personal', manual = {}, lastParse = null;
 
 $('#catPicker').innerHTML = CATS.map(c => `<button type="button" data-cat="${c.id}" style="--c:${catColor(c.id)}"><i></i>${c.name}</button>`).join('');
-$('#catPicker').addEventListener('click', e => { const b = e.target.closest('[data-cat]'); if (b) { cat = b.dataset.cat; paintCats(); } });
+$('#catPicker').addEventListener('click', e => { const b = e.target.closest('[data-cat]'); if (b) { cat = b.dataset.cat; manual.cat = true; paintCats(); } });
 const paintCats = () => $$('#catPicker button').forEach(b => b.classList.toggle('on', b.dataset.cat === cat));
 
 function dateChipDefs() {
@@ -1085,10 +1085,10 @@ function paintChips() {
   $('#dateChips').innerHTML = dateChipDefs().map(([l, d]) => `<button type="button" data-d="${ymd(d)}" class="${f.date.value === ymd(d) ? 'on' : ''}">${l}</button>`).join('');
   $('#timeChips').innerHTML = ['09:00', '13:00', '18:00', '21:00'].map(t => `<button type="button" data-t="${t}" class="${f.time.value === t ? 'on' : ''}">${t}</button>`).join('');
 }
-$('#dateChips').addEventListener('click', e => { const b = e.target.closest('[data-d]'); if (b) { f.date.value = b.dataset.d; manual.date = true; paintChips(); } });
-$('#timeChips').addEventListener('click', e => { const b = e.target.closest('[data-t]'); if (b) { f.time.value = b.dataset.t; manual.time = true; paintChips(); } });
-f.date.addEventListener('input', () => { manual.date = true; paintChips(); });
-f.time.addEventListener('input', () => { manual.time = true; paintChips(); });
+$('#dateChips').addEventListener('click', e => { const b = e.target.closest('[data-d]'); if (b) { f.date.value = b.dataset.d; manual.date = true; paintChips(); updateReady(); } });
+$('#timeChips').addEventListener('click', e => { const b = e.target.closest('[data-t]'); if (b) { f.time.value = b.dataset.t; manual.time = true; paintChips(); updateReady(); } });
+f.date.addEventListener('input', () => { manual.date = true; paintChips(); updateReady(); });
+f.time.addEventListener('input', () => { manual.time = true; paintChips(); updateReady(); });
 f.repeat.addEventListener('change', () => { manual.repeat = true; });
 
 function defaultWhen() {
@@ -1096,6 +1096,32 @@ function defaultWhen() {
   const d = new Date(n); d.setMinutes(0, 0, 0); d.setHours(d.getHours() + 1);
   if (d.getHours() >= 23 || d.getHours() < 7) { const t = addDays(startOfDay(n), n.getHours() >= 7 ? 1 : 0); t.setHours(9); return t; }
   return d;
+}
+
+const CAT_WORDS = [
+  ['finanzas', /\b(pag(ar|o)|banco|transferencia|factura|recibo|hacienda|renta|declaraci|impuesto|iva|irpf|accion(es)?|cartera|portfolio|invers|bitcoin|btc|cripto|staking|stacking|dividend|fondo|hipoteca|seguro|tarjeta|n[oó]mina|ahorro|bolsa|myinvestor)/i],
+  ['salud', /\b(m[eé]dic|doctor|dentista|cita m|pastilla|medicamento|farmacia|vacuna|an[aá]lisis|hospital|fisio|gimnasio|gym|entrenar|correr|pediatra|ginec|revisi[oó]n m)/i],
+  ['trabajo', /\b(reuni[oó]n|trabajo|oficina|cliente|jefe|proyecto|entrega|informe|presentaci[oó]n|curr|paro|sepe|empresa|llamada de trabajo|email|correo)/i],
+  ['casa', /\b(casa|piso|basura|limpiar|lavadora|compra|super|mercadona|alquiler|fianza|plantas|regar|luz|agua|gas|internet|fontanero|mudanza|trastero|coche|itv|taller)/i],
+];
+const guessCat = t => { for (const [c, re] of CAT_WORDS) if (re.test(deacc(t))) return c; return null; };
+
+/* Para crear hacen falta tres cosas: qué, día y hora */
+function missingFields() {
+  const miss = [];
+  if (!(f.title.value.trim())) miss.push('qué');
+  if (!f.date.value) miss.push('el día');
+  if (!f.time.value) miss.push('la hora');
+  return miss;
+}
+function updateReady() {
+  const miss = missingFields();
+  $('#sheetSave').disabled = miss.length > 0;
+  const el = $('#missing');
+  el.hidden = !miss.length || (!f.title.value.trim() && miss.length === 3);
+  if (miss.length) el.textContent = 'Falta ' + miss.join(' y ').replace(' y ', miss.length > 2 ? ', ' : ' y ');
+  $('#fDate').classList.toggle('need', !f.date.value);
+  $('#fTime').classList.toggle('need', !f.time.value);
 }
 
 function onTitleInput() {
@@ -1106,9 +1132,11 @@ function onTitleInput() {
   $('#nlHint').hidden = !!f.title.value;
   if (p.date && !manual.date) f.date.value = ymd(p.date);
   if (p.time && !manual.time) f.time.value = p.time;
-  else if (p.date && !p.time && !manual.time && !sameDay(p.date, new Date())) f.time.value = '09:00';
+  if (!p.time && !manual.time) f.time.value = '';
+  if (!p.date && !manual.date) f.date.value = '';
   if (!manual.repeat) f.repeat.value = p.repeat || 'none';
-  paintChips();
+  if (!manual.cat) { const g = guessCat(f.title.value); if (g && g !== cat) { cat = g; paintCats(); } }
+  paintChips(); updateReady();
 }
 f.title.addEventListener('input', onTitleInput);
 
@@ -1131,13 +1159,9 @@ function openSheet({ id, date, text } = {}) {
     $('#fCal').closest('.toggle-row').hidden = !cloud.connected();
     $('#btnAddCal').hidden = cloud.connected();
   } else {
-    const d = defaultWhen();
-    if (date) {
-      const x = startOfDay(date);
-      if (sameDay(x, new Date()) && sameDay(d, x)) x.setHours(d.getHours()); else x.setHours(9);
-      f.date.value = ymd(x); f.time.value = hm(x); manual.date = true;
-    }
-    else { f.date.value = ymd(d); f.time.value = hm(d); }
+    // No se inventa nada: el día y la hora los dices tú (o los eliges)
+    f.date.value = date ? ymd(startOfDay(date)) : ''; f.time.value = '';
+    if (date) manual.date = true;
     f.title.value = text || ''; f.notes.value = '';
     f.repeat.value = 'none'; f.alert.value = '0'; f.priority.checked = false;
     f.cal.checked = !!state.settings.autoCal;
@@ -1145,7 +1169,8 @@ function openSheet({ id, date, text } = {}) {
     $('#fCal').closest('.toggle-row').hidden = false;
     if (text) onTitleInput();
   }
-  paintCats(); paintChips();
+  paintCats(); paintChips(); updateReady();
+  $('#voiceStatus').hidden = true;
   document.body.classList.add('sheet-open');
   sheet.classList.add('open'); sheetScrim.classList.add('show');
   sheet.querySelector('.sheet-body').scrollTop = 0;
@@ -1175,12 +1200,28 @@ $('#micBtn').addEventListener('click', () => {
     else if (e.error === 'no-speech') toast('No te he oído', 'Pulsa el micro y habla.');
     else if (e.error !== 'aborted') toast('El dictado no está disponible ahora');
   };
-  rec.onend = () => { rec = null; micUI(false); };
+  rec.onend = () => {
+    rec = null; micUI(false);
+    if (!f.title.value.trim()) return;
+    const miss = missingFields(), vs = $('#voiceStatus');
+    vs.hidden = false;
+    if (!miss.length) {
+      vs.className = 'voice-status ok';
+      const d = fromParts(f.date.value, f.time.value);
+      vs.textContent = `✓ ${dayFull(d)} · ${fmtTime(d)} — creando…`;
+      clearTimeout(window.__voiceSave);
+      window.__voiceSave = setTimeout(() => { if (sheet.classList.contains('open') && !missingFields().length) sheet.requestSubmit(); }, 1100);
+    } else {
+      vs.className = 'voice-status warn';
+      vs.textContent = `Falta ${miss.join(' y ')}. Pulsa el micro y dímelo, o elígelo abajo.`;
+      vibrate([40, 40, 40]);
+    }
+  };
   try { rec.start(); micUI(true); vibrate(10); } catch (e) { rec = null; micUI(false); }
 });
 
 function closeSheet() {
-  stopMic();
+  stopMic(); clearTimeout(window.__voiceSave);
   sheet.classList.remove('open'); sheetScrim.classList.remove('show');
   document.body.classList.remove('sheet-open');
   editing = null; f.title.blur();
@@ -1194,7 +1235,7 @@ sheet.addEventListener('submit', e => {
   let title = f.title.value.trim();
   if (!editing && lastParse && lastParse.matched && lastParse.title) title = lastParse.title;
   if (!title) { f.title.focus(); return; }
-  if (!f.date.value || !f.time.value) { toast('Falta la fecha o la hora'); return; }
+  if (missingFields().length) { updateReady(); toast('Falta ' + missingFields().join(' y ')); return; }
   const due = +fromParts(f.date.value, f.time.value);
   const data = {
     title, notes: f.notes.value.trim(), due,
