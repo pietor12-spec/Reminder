@@ -951,7 +951,7 @@ function renderSettings() {
 /* ---------- Render global ---------- */
 let heroTimer;
 function lockHome() {
-  const lock = (tab === 'home' || tab === 'calendar') && !query && !isDesktop() && !document.body.classList.contains('sheet-open');
+  const lock = (tab === 'home' || (tab === 'calendar' && !isDesktop())) && !query && !document.body.classList.contains('sheet-open');
   document.documentElement.classList.toggle('lock', lock);
   if (lock && window.scrollY) window.scrollTo(0, 0);
 }

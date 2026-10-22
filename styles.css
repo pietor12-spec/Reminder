@@ -816,3 +816,34 @@ button.stat:active { transform: scale(.97); }
 .cal-list, .home-main.scroll { padding-left: 8px !important; margin-left: -8px !important; padding-right: 2px; padding-bottom: calc(28px + var(--safe-b)) !important; }
 .cal-list { padding-top: 6px; }
 @media (min-width: 900px) { .home-side { padding-bottom: 52px; } }
+
+/* ===== Ordenador: pantalla fija, el calendario se adapta al alto disponible ===== */
+@media (min-width: 900px) {
+  html.lock, html.lock body { overflow: hidden; }
+  .home-layout { height: calc(100dvh - 96px); }
+  .home-side { padding-bottom: 26px !important; min-height: 0; }
+  .home-cal { min-height: 0; }
+  .home-cal .cal-card { min-height: 0; overflow: hidden; }
+  .home-cal .cal-grid { min-height: 0; grid-template-rows: auto repeat(6, minmax(0, 1fr)); }
+  .home-cal .day { min-height: 0 !important; height: auto; }
+  .home-cal .day .num { width: auto; height: min(44px, calc(100% - 4px)); aspect-ratio: 1; }
+}
+@media (min-width: 900px) {
+  .home-cal .cal-grid { grid-template-rows: auto repeat(6, minmax(30px, 1fr)); }
+  .home-cal .day .num { height: min(44px, 30px + (100% - 30px)); min-height: 28px; }
+}
+/* Ventanas bajas: todo un poco más compacto para que quepa sin desplazar */
+@media (min-width: 900px) and (max-height: 780px) {
+  .topbar { padding-top: 10px; padding-bottom: 8px; }
+  .home-layout { height: calc(100dvh - 76px); }
+  #view-home .greet { margin-bottom: 8px; }
+  #view-home .hero.hero2 { min-height: 0; padding: 14px 18px; margin-bottom: 10px; }
+  .cal-leaf { width: 70px; } .cal-leaf b { font-size: 30px; }
+  .hero-time { font-size: 26px !important; }
+  #view-home .stats { margin-bottom: 10px; }
+  #view-home .stat { padding: 7px 12px; }
+  .home-cal .cal-card { padding: 10px 14px 8px; }
+  .home-cal .cal-head { margin-bottom: 2px; }
+  .home-cal .cal-head h2 { font-size: 20px; }
+  .home-side { padding-bottom: 14px !important; }
+}
