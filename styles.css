@@ -716,3 +716,38 @@ button.stat:active { transform: scale(.97); }
 /* Calendario con el mismo formato que Inicio */
 .day-panel .tl { margin-top: 6px; }
 .tl-item.is-done .title { text-decoration: line-through; color: var(--muted); }
+
+/* ===== Calendario: más compacto en el móvil y mes completo debajo ===== */
+.cal-card { padding: 12px 12px 8px; }
+.cal-head { margin-bottom: 6px; }
+.cal-head h2 { font-size: 21px; }
+.cal-grid { gap: 2px; }
+.cal-grid .dow { padding: 2px 0 4px; }
+.day { aspect-ratio: auto; height: 42px; }
+.day .num { width: 34px; height: 34px; }
+.day-panel .add-day { margin: 2px 0 16px; }
+.tl-group.sel .tl-node { box-shadow: 0 0 0 5px color-mix(in srgb, var(--c) 25%, transparent); }
+.tl-group.sel .tl-day { color: var(--text); }
+.home-cal { margin-top: 18px; }
+.home-cal .day { height: 38px; }
+.home-cal .day .num { width: 32px; height: 32px; }
+
+/* ===== Ordenador ===== */
+@media (min-width: 900px) {
+  .topbar { max-width: none; padding-left: 28px; padding-right: 28px; }
+  .wordmark.small { font-size: 38px; }
+  .brand .app-icon { width: 50px; height: 50px; border-radius: 15px; }
+  #bellMenu { left: 24px; top: calc(80px + var(--safe-t)); }
+  main { max-width: 1280px; padding-left: 28px; padding-right: 28px; }
+  .home-layout { grid-template-columns: minmax(380px, 440px) 1fr; gap: 72px; }
+  .cal-layout { grid-template-columns: minmax(380px, 460px) 1fr; gap: 72px; }
+  .home-layout .home-side, .cal-layout .day-panel { position: static; }
+  .cal-layout > .cal-card { position: sticky; top: 90px; }
+  .home-main.scroll { margin-top: 0; padding-top: 6px; }
+  #view-home .greet { margin-top: 0; }
+}
+@media (min-width: 900px) {
+  main { max-width: 1440px; margin: 0; padding-left: 32px; padding-right: 40px; }
+  .home-layout, .cal-layout { gap: 88px; }
+  #view-home .greet { margin-left: 4px; }
+}

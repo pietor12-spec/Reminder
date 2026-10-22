@@ -597,6 +597,52 @@ function countdown(ms) {
 }
 
 let homeFilter = 'next';
+const isDesktop = () => matchMedia('(min-width: 900px)').matches;
+// Recordatorios pendientes de un rango, agrupados por día: [etiqueta, [{r, at}], clase]
+function dayGroups(s, e, { includeDone = false } = {}) {
+  const map = new Map();
+  for (const r of state.reminders) {
+    if (r.done && !includeDone) continue;
+    for (const t of occurrencesBetween(r, +s, +e)) {
+      const k = ymd(new Date(t)); if (!map.has(k)) map.set(k, []);
+      map.get(k).push({ r, at: t, virtual: !r.done && t !== r.due });
+    }
+  }
+  return [...map.entries()].sort((x, y) => x[0] < y[0] ? -1 : 1)
+    .map(([k, arr]) => [dayFull(new Date(k + 'T12:00')), arr.sort((p, q) => p.at - q.at),
+      arr.some(o => !o.r.done && o.at < Date.now()) && new Date(k + 'T23:59') < new Date() ? 'overdue' : '', k]);
+}
+// Línea de tiempo (mismo formato en todas las pestañas)
+function tlHTML(groups, selKey) {
+  return `<div class="tl">` + groups.map(([t, arr, cls, k]) => `
+    <div class="group tl-group${k && k === selKey ? ' sel' : ''}"${k ? ` data-gday="${k}"` : ''} style="--c:${cls === 'overdue' ? 'var(--overdue)' : catColor(arr[0].r.cat)}">
+      <div class="tl-day"><span class="tl-node"></span>${t}</div>
+      <div class="list">${arr.map(o => tlItem(o.r, o.at, cls === 'overdue' || (!o.r.done && o.at < Date.now()))).join('')}</div></div>`).join('') + `</div>`;
+}
+// Calendario del mes (pestaña Calendario y, en ordenador, Inicio)
+function calCardHTML() {
+  const mo = calMonth.getMonth();
+  const offset = (calMonth.getDay() + 6) % 7;
+  const gridStart = addDays(calMonth, -offset), gridEnd = addDays(gridStart, 42);
+  const map = occMap(gridStart, gridEnd);
+  const today = new Date();
+  let cells = ['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(d => `<div class="dow">${d}</div>`).join('');
+  for (let i = 0; i < 42; i++) {
+    const d = addDays(gridStart, i), k = ymd(d), occ = map.get(k) || [];
+    const cols = [...new Set(occ.map(o => o.r.done ? 'var(--faint)' : catColor(o.r.cat)))].slice(0, 4);
+    const ring = cols.length === 1 ? cols[0]
+      : cols.length ? 'conic-gradient(' + cols.map((c, i) => `${c} ${i * 360 / cols.length + 4}deg ${(i + 1) * 360 / cols.length - 4}deg, transparent 0 ${(i + 1) * 360 / cols.length + 4}deg`).join(', ') + ')' : '';
+    cells += `<button class="day${d.getMonth() !== mo ? ' other' : ''}${sameDay(d, today) ? ' today' : ''}${sameDay(d, calSel) ? ' sel' : ''}${occ.length ? ' has' : ''}" data-day="${k}"${ring ? ` style="--ring:${ring}"` : ''} aria-label="${fmtLong(d)}${occ.length ? ', ' + occ.length + ' recordatorios' : ''}">
+      <span class="num"><b>${d.getDate()}</b></span></button>`;
+  }
+  const monthName = cap(calMonth.toLocaleDateString('es-ES', { month: 'long' })) + ' ' + calMonth.getFullYear();
+  return `<div class="cal-card" id="calCard">
+      <div class="cal-head"><h2>${monthName}</h2>
+        <div class="nav"><button class="pill-btn" data-cal="today">Hoy</button>
+          <button class="icon-btn" data-cal="prev" aria-label="Mes anterior">${ICON.left}</button>
+          <button class="icon-btn" data-cal="next" aria-label="Mes siguiente">${ICON.right}</button></div></div>
+      <div class="cal-grid">${cells}</div></div>`;
+}
 // Fila de la línea de tiempo: título y hora en el color de su categoría
 function tlItem(r, at, late) {
   const d = new Date(at);
@@ -664,25 +710,16 @@ function renderHome() {
     for (const [k, arr] of byDay) groups.push([dayFull(new Date(k + 'T12:00')), arr, '']);
   }
 
-  if (homeFilter !== 'next') {
+  if (homeFilter === 'day') {
+    groups = dayGroups(startOfDay(calSel), addDays(startOfDay(calSel), 1), { includeDone: true });
+  } else if (homeFilter !== 'next') {
     const s = homeFilter === 'week' ? w0 : new Date(t0.getFullYear(), t0.getMonth(), 1);
     const e = homeFilter === 'week' ? addDays(w0, 7) : new Date(t0.getFullYear(), t0.getMonth() + 1, 1);
-    const map = new Map();
-    for (const r of state.reminders) {
-      if (r.done) continue;
-      for (const t of occurrencesBetween(r, +s, +e)) {
-        const k = ymd(new Date(t)); if (!map.has(k)) map.set(k, []);
-        map.get(k).push({ r, at: t, virtual: t !== r.due });
-      }
-    }
-    groups = [...map.entries()].sort((x, y) => x[0] < y[0] ? -1 : 1)
-      .map(([k, arr]) => [dayFull(new Date(k + 'T12:00')), arr.sort((p, q) => p.at - q.at), new Date(k + 'T23:59') < new Date() ? 'overdue' : '']);
+    groups = dayGroups(s, e);
   }
 
-  const lists = groups.length ? `<div class="tl">` + groups.map(([t, arr, cls]) => `
-    <div class="group tl-group" style="--c:${cls === 'overdue' ? 'var(--overdue)' : catColor(arr[0].r.cat)}">
-      <div class="tl-day"><span class="tl-node"></span>${t}</div>
-      <div class="list">${arr.map(o => tlItem(o.r, o.at, cls === 'overdue')).join('')}</div></div>`).join('') + `</div>`
+  const lists = groups.length ? tlHTML(groups)
+    : homeFilter === 'day' ? `<p class="empty-mini">${dayFull(calSel)}: día libre.</p><button class="add-day" data-cal="add" style="max-width:320px;margin:0 auto;display:flex">${ICON.plus} Añadir en este día</button>`
     : homeFilter !== 'next' ? `<p class="empty-mini">Nada ${homeFilter === 'week' ? 'esta semana' : 'este mes'}.</p>`
     : list.length ? `<p class="empty-mini">Nada en los próximos 7 días.</p>`
     : `<div class="empty">
@@ -705,8 +742,9 @@ function renderHome() {
         <button class="stat${homeFilter === 'week' ? ' on' : ''}" data-hf="week"><b>${weekCount}</b><span>Semanal</span></button>
         <button class="stat${homeFilter === 'month' ? ' on' : ''}" data-hf="month"><b>${monthCount}</b><span>Mensual</span></button>
       </div>
+      ${isDesktop() ? `<div class="home-cal">${calCardHTML()}</div>` : ''}
     </div>
-    <div class="home-main${homeFilter !== 'next' ? ' scroll' : ''}">${lists}</div>
+    <div class="home-main${homeFilter !== 'next' || isDesktop() ? ' scroll' : ''}">${homeFilter === 'day' && groups.length ? '' : ''}${lists}</div>
   </div>`;
   requestAnimationFrame(fitHome);
 }
@@ -716,7 +754,7 @@ function fitHome() {
   const main = $('#view-home .home-main');
   if (!main || query || $('#app').hidden) return;
   const fabTop = window.innerHeight - 12;
-  if (homeFilter !== 'next') { main.style.maxHeight = Math.max(160, fabTop - 10 - main.getBoundingClientRect().top) + 'px'; return; }
+  if (homeFilter !== 'next' || isDesktop()) { main.style.maxHeight = Math.max(160, fabTop - 10 - main.getBoundingClientRect().top) + 'px'; return; }
   main.style.maxHeight = '';
   const wraps = $$('.item-wrap', main);
   // Cabe hasta justo encima del botón +; lo demás está en la pestaña Recordatorios
@@ -752,31 +790,16 @@ function renderList() {
   const range = listRange();
   let groups = [], total = 0;
   if (range) {
-    const [s, e] = range;
-    const map = new Map();
-    for (const r of state.reminders) {
-      if (r.done) continue;
-      for (const t of occurrencesBetween(r, +s, +e)) {
-        const k = ymd(new Date(t)); if (!map.has(k)) map.set(k, []);
-        map.get(k).push({ r, at: t, virtual: t !== r.due }); total++;
-      }
-    }
-    groups = [...map.entries()].sort((x, y) => x[0] < y[0] ? -1 : 1).map(([k, arr]) => {
-      const d = new Date(k + 'T12:00');
-      const label = listMode === 'day' ? '' : (['Hoy', 'Mañana', 'Ayer'].includes(dayLabel(d)) ? dayLabel(d) + ' · ' : '') + fmtLong(d);
-      return [label, arr.sort((p, q) => p.at - q.at), ''];
-    });
+    groups = dayGroups(range[0], range[1]);
+    total = groups.reduce((n, g) => n + g[1].length, 0);
   } else {
     const list = pending().sort((x, y) => x.due - y.due);
     total = list.length;
     const over = list.filter(r => r.due < now);
     if (over.length) groups.push(['Atrasados', over.map(r => ({ r, at: r.due })), 'overdue']);
-    const byMonth = new Map();
-    list.filter(r => r.due >= now).forEach(r => {
-      const d = new Date(r.due), k = cap(d.toLocaleDateString('es-ES', { month: 'long' })) + ' ' + d.getFullYear();
-      if (!byMonth.has(k)) byMonth.set(k, []); byMonth.get(k).push({ r, at: r.due });
-    });
-    groups.push(...[...byMonth].map(([k, arr]) => [k, arr, '']));
+    const byDay = new Map();
+    list.filter(r => r.due >= now).forEach(r => { const k = ymd(new Date(r.due)); if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push({ r, at: r.due }); });
+    groups.push(...[...byDay].map(([k, arr]) => [dayFull(new Date(k + 'T12:00')) + (new Date(k).getFullYear() !== new Date().getFullYear() ? ' ' + k.slice(0, 4) : ''), arr, '', k]));
   }
   const showDay = listMode === 'all';
   v.innerHTML = `
@@ -789,8 +812,7 @@ function renderList() {
         <button class="icon-btn" data-lnav="1" aria-label="Siguiente">${ICON.right}</button>
       </div>` : ''}
     </div>
-    ${groups.length ? groups.map(([t, arr, cls]) => `<div class="group">${t ? `<div class="group-title ${cls}">${t}</div>` : ''}
-      <div class="list">${arr.map(o => itemHTML(o.r, o.at, { virtual: o.virtual, showDay })).join('')}</div></div>`).join('')
+    ${groups.length ? tlHTML(groups)
       : `<div class="empty" style="padding:28px 20px"><p>${range ? 'Sin recordatorios en este periodo.' : 'No tienes recordatorios pendientes.'}</p>
          <button class="add-day" data-lnew style="max-width:320px;margin:0 auto">${ICON.plus} Añadir uno</button></div>`}`;
 }
@@ -813,43 +835,23 @@ function occMap(start, end) {
 }
 function renderCalendar() {
   const v = $('#view-calendar');
-  const y = calMonth.getFullYear(), mo = calMonth.getMonth();
-  const offset = (calMonth.getDay() + 6) % 7;
-  const gridStart = addDays(calMonth, -offset), gridEnd = addDays(gridStart, 42);
-  const map = occMap(gridStart, gridEnd);
-  const today = new Date();
-  let cells = ['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(d => `<div class="dow">${d}</div>`).join('');
-  for (let i = 0; i < 42; i++) {
-    const d = addDays(gridStart, i), k = ymd(d), occ = map.get(k) || [];
-    // Anillo con el color de la categoría; si hay varias, se reparte en segmentos
-    const cols = [...new Set(occ.map(o => o.r.done ? 'var(--faint)' : catColor(o.r.cat)))].slice(0, 4);
-    const ring = cols.length === 1 ? cols[0]
-      : cols.length ? 'conic-gradient(' + cols.map((c, i) => `${c} ${i * 360 / cols.length + 4}deg ${(i + 1) * 360 / cols.length - 4}deg, transparent 0 ${(i + 1) * 360 / cols.length + 4}deg`).join(', ') + ')' : '';
-    cells += `<button class="day${d.getMonth() !== mo ? ' other' : ''}${sameDay(d, today) ? ' today' : ''}${sameDay(d, calSel) ? ' sel' : ''}${occ.length ? ' has' : ''}" data-day="${k}"${ring ? ` style="--ring:${ring}"` : ''} aria-label="${fmtLong(d)}${occ.length ? ', ' + occ.length + ' recordatorios' : ''}">
-      <span class="num"><b>${d.getDate()}</b></span></button>`;
-  }
-  const selOcc = map.get(ymd(calSel)) || occMap(startOfDay(calSel), addDays(startOfDay(calSel), 1)).get(ymd(calSel)) || [];
-  const monthName = cap(calMonth.toLocaleDateString('es-ES', { month: 'long' })) + ' ' + calMonth.getFullYear();
+  const groups = dayGroups(calMonth, new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1), { includeDone: true });
+  const selKey = ymd(calSel);
+  const monthName = cap(calMonth.toLocaleDateString('es-ES', { month: 'long' }));
   v.innerHTML = `<div class="cal-layout">
-    <div class="cal-card" id="calCard">
-      <div class="cal-head">
-        <h2>${monthName}</h2>
-        <div class="nav">
-          <button class="pill-btn" data-cal="today">Hoy</button>
-          <button class="icon-btn" data-cal="prev" aria-label="Mes anterior">${ICON.left}</button>
-          <button class="icon-btn" data-cal="next" aria-label="Mes siguiente">${ICON.right}</button>
-        </div>
-      </div>
-      <div class="cal-grid">${cells}</div>
-    </div>
+    ${calCardHTML()}
     <div class="day-panel">
-      ${selOcc.length ? '' : `<h3>${sameDay(calSel, today) ? 'Hoy, ' + calSel.getDate() : fmtLong(calSel)}</h3><p class="sub">Día libre</p>`}
-      ${selOcc.length ? `<div class="tl"><div class="group tl-group" style="--c:${catColor(selOcc[0].r.cat)}">
-        <div class="tl-day"><span class="tl-node"></span>${dayFull(calSel)}</div>
-        <div class="list">${selOcc.map(o => tlItem(o.r, o.at, !o.r.done && o.at < Date.now())).join('')}</div></div></div>` : ''}
-      <button class="add-day" data-cal="add">${ICON.plus} Añadir en este día</button>
+      <button class="add-day" data-cal="add">${ICON.plus} Añadir el ${dayFull(calSel).replace(/^(Hoy|Mañana), /, '').toLowerCase()}</button>
+      ${groups.length ? tlHTML(groups, selKey) : `<p class="empty-mini">Nada en ${monthName.toLowerCase()}.</p>`}
     </div>
   </div>`;
+}
+function scrollToSelDay() {
+  const g = $(`#view-calendar [data-gday="${ymd(calSel)}"]`) || $(`#view-home [data-gday="${ymd(calSel)}"]`);
+  if (!g) return;
+  const box = g.closest('.scroll');
+  if (box) box.scrollTo({ top: g.offsetTop - 8, behavior: 'smooth' });
+  else window.scrollTo({ top: g.getBoundingClientRect().top + window.scrollY - 90, behavior: 'smooth' });
 }
 
 /* ---------- Render: Hecho ---------- */
@@ -940,7 +942,7 @@ function renderSettings() {
 /* ---------- Render global ---------- */
 let heroTimer;
 function lockHome() {
-  const lock = tab === 'home' && !query && !document.body.classList.contains('sheet-open');
+  const lock = tab === 'home' && !query && !isDesktop() && !document.body.classList.contains('sheet-open');
   document.documentElement.classList.toggle('lock', lock);
   if (lock && window.scrollY) window.scrollTo(0, 0);
 }
@@ -1015,7 +1017,8 @@ $('#views').addEventListener('click', e => {
     const [y, m, d] = day.dataset.day.split('-').map(Number);
     calSel = new Date(y, m - 1, d);
     if (calSel.getMonth() !== calMonth.getMonth()) calMonth = new Date(y, m - 1, 1);
-    renderCalendar(); return;
+    if (tab === 'home') homeFilter = 'day';
+    render(); requestAnimationFrame(scrollToSelDay); return;
   }
   const cal = t.closest('[data-cal]');
   if (cal) {
@@ -1024,7 +1027,7 @@ $('#views').addEventListener('click', e => {
     else if (c === 'next') calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1);
     else if (c === 'today') { calSel = startOfDay(new Date()); calMonth = new Date(calSel.getFullYear(), calSel.getMonth(), 1); }
     else if (c === 'add') { openSheet({ date: calSel }); return; }
-    renderCalendar(); return;
+    render(); return;
   }
   const seg = t.closest('[data-seg]');
   if (seg) {
