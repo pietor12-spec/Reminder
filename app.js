@@ -612,10 +612,16 @@ function dayGroups(s, e, { includeDone = false } = {}) {
     .map(([k, arr]) => [dayFull(new Date(k + 'T12:00')), arr.sort((p, q) => p.at - q.at),
       arr.some(o => !o.r.done && o.at < Date.now()) && new Date(k + 'T23:59') < new Date() ? 'overdue' : '', k]);
 }
+// Anillo de colores: si un día tiene varias categorías, el círculo se reparte en segmentos
+function ringOf(arr) {
+  const cols = [...new Set(arr.map(o => o.r.done ? 'var(--faint)' : catColor(o.r.cat)))].slice(0, 4);
+  if (cols.length < 2) return cols[0] || 'var(--faint)';
+  return 'conic-gradient(' + cols.map((c, i) => `${c} ${i * 360 / cols.length + 6}deg ${(i + 1) * 360 / cols.length - 6}deg, transparent 0 ${(i + 1) * 360 / cols.length + 6}deg`).join(', ') + ')';
+}
 // Línea de tiempo (mismo formato en todas las pestañas)
 function tlHTML(groups, selKey) {
   return `<div class="tl">` + groups.map(([t, arr, cls, k]) => `
-    <div class="group tl-group${k && k === selKey ? ' sel' : ''}"${k ? ` data-gday="${k}"` : ''} style="--c:${cls === 'overdue' ? 'var(--overdue)' : catColor(arr[0].r.cat)}">
+    <div class="group tl-group${k && k === selKey ? ' sel' : ''}"${k ? ` data-gday="${k}"` : ''} style="--c:${cls === 'overdue' ? 'var(--overdue)' : catColor(arr[0].r.cat)};--ring:${cls === 'overdue' ? 'var(--overdue)' : ringOf(arr)}">
       <div class="tl-day"><span class="tl-node"></span>${t}</div>
       <div class="list">${arr.map(o => tlItem(o.r, o.at, cls === 'overdue' || (!o.r.done && o.at < Date.now()))).join('')}</div></div>`).join('') + `</div>`;
 }

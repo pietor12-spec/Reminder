@@ -805,3 +805,9 @@ button.stat:active { transform: scale(.97); }
   .home-cal .day .num { width: 40px; height: 40px; font-size: 15px; }
   .home-cal .cal-head h2 { font-size: 24px; }
 }
+
+/* Círculo de la línea de tiempo con los colores de todas sus categorías */
+.tl-node { border: 0 !important; background: var(--ring, var(--c)) !important; }
+.tl-node::before { content: ""; position: absolute; inset: 3.5px; border-radius: 50%; background: var(--bg); }
+/* Ordenador: más aire bajo el calendario */
+@media (min-width: 900px) { .home-side { padding-bottom: 72px; } }
