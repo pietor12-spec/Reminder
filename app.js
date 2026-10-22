@@ -154,7 +154,10 @@ const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 
 const NUMW = { un: 1, una: 1, uno: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10, quince: 15, veinte: 20, treinta: 30, cuarenta: 40, cincuenta: 50 };
 const wdIndex = w => WD.indexOf(w.replace(/^(sabado|domingo)s$/, '$1'));
 
+const HOURW = { una: 1, uno: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10, once: 11, doce: 12 };
 function parseNL(input, now = new Date()) {
+  // Dictado: «a las diez y media» → «a las 10 y media»
+  input = input.replace(/\b(las?)\s+(una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)\b/gi, (m, art, w) => art + ' ' + HOURW[w.toLowerCase()]);
   let orig = ' ' + input.normalize('NFC') + ' ';
   let low = deacc(orig);
   const res = { date: null, time: null, repeat: null, chips: [] };
@@ -1148,7 +1151,36 @@ function openSheet({ id, date, text } = {}) {
   sheet.querySelector('.sheet-body').scrollTop = 0;
   setTimeout(() => { if (!editing || !matchMedia('(pointer:coarse)').matches) f.title.focus(); }, 280);
 }
+/* ---------- Dictado por voz ---------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null, recBase = '';
+if (SR) $('#micBtn').hidden = false;
+function stopMic() { try { rec && rec.stop(); } catch (e) { } }
+function micUI(on) { $('#micBtn').classList.toggle('on', on); $('#micLive').hidden = !on; }
+$('#micBtn').addEventListener('click', () => {
+  if (!SR) return;
+  if (rec) { stopMic(); return; }
+  rec = new SR();
+  rec.lang = 'es-ES'; rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
+  recBase = f.title.value.trim();
+  rec.onresult = e => {
+    let txt = '';
+    for (let i = 0; i < e.results.length; i++) txt += e.results[i][0].transcript;
+    txt = txt.trim();
+    f.title.value = (recBase ? recBase + ' ' : '') + (txt ? txt[0].toUpperCase() + txt.slice(1) : '');
+    onTitleInput();
+  };
+  rec.onerror = e => {
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') toast('Sin permiso de micrófono', 'Actívalo en los ajustes del navegador para este sitio.');
+    else if (e.error === 'no-speech') toast('No te he oído', 'Pulsa el micro y habla.');
+    else if (e.error !== 'aborted') toast('El dictado no está disponible ahora');
+  };
+  rec.onend = () => { rec = null; micUI(false); };
+  try { rec.start(); micUI(true); vibrate(10); } catch (e) { rec = null; micUI(false); }
+});
+
 function closeSheet() {
+  stopMic();
   sheet.classList.remove('open'); sheetScrim.classList.remove('show');
   document.body.classList.remove('sheet-open');
   editing = null; f.title.blur();
@@ -1198,7 +1230,6 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { if (sheet.classList.contains('open')) closeSheet(); else if (menu.classList.contains('open')) openMenu(false); else if (!$('#searchBar').hidden) toggleSearch(false); return; }
   if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
   if (e.key === 'n' || e.key === '+') { e.preventDefault(); openSheet(); }
-  else if (e.key === '/') { e.preventDefault(); toggleSearch(true); }
   else if ('12345'.includes(e.key)) setTab(['home', 'calendar', 'list', 'done', 'settings'][+e.key - 1]);
 });
 

@@ -29,7 +29,7 @@
       } catch (e) { document.documentElement.dataset.theme = 'dark'; }
     })();
   </script>
-  <link rel="stylesheet" href="styles.css?v=10">
+  <link rel="stylesheet" href="styles.css?v=12">
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -67,7 +67,7 @@
         <svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
       </button>
       <div class="top-actions">
-        <button class="icon-btn" id="searchBtn" aria-label="Buscar"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></button>
+        <button class="icon-btn" id="searchBtn" aria-label="Buscar" hidden><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></button>
         <button id="fab" aria-label="Nuevo recordatorio"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
       </div>
     </header>
@@ -110,7 +110,13 @@
 
     <div class="sheet-body">
       <div class="title-wrap">
-        <input id="fTitle" class="title-input" placeholder="¿Qué quieres recordar?" maxlength="140" required>
+        <div class="title-row">
+          <input id="fTitle" class="title-input" placeholder="¿Qué quieres recordar?" maxlength="140" required>
+          <button type="button" id="micBtn" class="mic-btn" aria-label="Dictar por voz" hidden>
+            <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></svg>
+          </button>
+        </div>
+        <div class="mic-live" id="micLive" hidden><i></i><i></i><i></i><span>Te escucho… di algo como «llamar al dentista mañana a las 10»</span></div>
         <div class="nl-hint" id="nlHint">Escribe natural: <i>«Llamar al dentista mañana a las 10»</i></div>
         <div class="nl-chips" id="nlChips"></div>
       </div>
@@ -177,6 +183,6 @@
   <div id="toasts" aria-live="polite"></div>
   <input type="file" id="importFile" accept="application/json,.json" hidden>
 
-  <script src="app.js?v=10"></script>
+  <script src="app.js?v=12"></script>
 </body>
 </html>
