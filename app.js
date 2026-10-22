@@ -406,8 +406,64 @@ function deleteReminder(id) {
 function snooze(id, minutes = 10) {
   const r = byId(id); if (!r) return;
   r.snoozeUntil = Date.now() + minutes * MIN; r.firedAt = null; commit();
-  toast(`Pospuesto ${minutes >= 60 ? minutes / 60 + ' h' : minutes + ' min'}`, r.title);
+  toast(`Te aviso ${minutes >= 60 ? 'en ' + minutes / 60 + ' h' : 'en ' + minutes + ' min'}`, r.title);
 }
+
+/* Ventana de aviso: Hecho o «Avísame en…» */
+const alarmQueue = [];
+function showAlarm(r) {
+  if (!alarmQueue.some(x => x.id === r.id)) alarmQueue.push(r);
+  if (alarmQueue.length === 1) renderAlarm();
+}
+function renderAlarm() {
+  const box = $('#alarm');
+  const r = alarmQueue[0];
+  if (!r) { box.classList.remove('show'); return; }
+  const d = new Date(r.due), late = r.due < Date.now() - MIN;
+  box.innerHTML = `<div class="alarm-card" style="--cat:${catColor(r.cat)}">
+    <span class="app-icon big ringing"><svg><use href="#bell"/></svg></span>
+    <div class="alarm-when${late ? ' late' : ''}">${dayFull(d)} · ${fmtTime(d)}${late ? ` <small>${relLabel(r.due)}</small>` : ''}</div>
+    <h3>${esc(r.title)}</h3>
+    ${r.notes ? `<p class="alarm-notes">${esc(r.notes)}</p>` : ''}
+    <button class="btn primary alarm-done" data-al="done">${ICON.check} Hecho</button>
+    <div class="alarm-later-t">Avísame en</div>
+    <div class="alarm-later">
+      <button class="btn" data-al="10">10 min</button><button class="btn" data-al="60">1 hora</button><button class="btn" data-al="180">3 horas</button>
+    </div>
+    ${alarmQueue.length > 1 ? `<div class="alarm-more">+${alarmQueue.length - 1} aviso${alarmQueue.length > 2 ? 's' : ''} más</div>` : ''}
+  </div>`;
+  box.classList.add('show');
+}
+$('#alarm').addEventListener('click', e => {
+  const b = e.target.closest('[data-al]'); if (!b) return;
+  const r = alarmQueue.shift();
+  if (r && byId(r.id)) { if (b.dataset.al === 'done') completeReminder(r.id); else snooze(r.id, +b.dataset.al); }
+  renderAlarm();
+});
+
+/* Al abrir la app: lo que tienes mañana */
+function tomorrowList() {
+  const t1 = addDays(startOfDay(new Date()), 1), t2 = addDays(t1, 1), out = [];
+  for (const r of state.reminders) if (!r.done) for (const t of occurrencesBetween(r, +t1, +t2)) out.push({ r, at: t });
+  return out.sort((x, y) => x.at - y.at);
+}
+function showTomorrow() {
+  const list = tomorrowList();
+  if (!list.length) return false;
+  const t1 = addDays(startOfDay(new Date()), 1);
+  const box = $('#tomorrow');
+  box.innerHTML = `<div class="tm-card">
+    <div class="tm-head"><span class="app-icon ringing"><svg><use href="#bell"/></svg></span>
+      <div><small>Mañana, ${t1.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</small>
+      <h3>Tienes ${list.length === 1 ? 'esto' : list.length + ' cosas'}</h3></div></div>
+    <div class="tm-list">${list.map((o, i) => `<div class="tm-item" style="--cat:${catColor(o.r.cat)};animation-delay:${.08 * i + .1}s">
+      <span class="tm-time">${fmtTime(new Date(o.at))}</span><span class="tm-title">${esc(o.r.title)}</span></div>`).join('')}</div>
+    <button class="btn primary tm-ok" data-tm="ok">Entendido</button>
+  </div>`;
+  box.classList.add('show'); chime(); vibrate([60, 40, 60]);
+  return true;
+}
+$('#tomorrow').addEventListener('click', e => { if (e.target.closest('[data-tm]')) $('#tomorrow').classList.remove('show'); });
 const vibrate = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) { } };
 
 /* ---------- Avisos ---------- */
@@ -427,10 +483,12 @@ function fire(r) {
   const when = r.alert && !r.snoozeUntil ? `${relLabel(r.due)}` : fmtTime(new Date(r.due));
   chime(); vibrate([80, 60, 80]);
   bellRing();
-  toast(r.title, when + (r.notes ? ' · ' + r.notes : ''), [['10 min', () => snooze(r.id, 10)], ['Hecho', () => completeReminder(r.id)]], { alarm: true, ms: 15000 });
+  // Insiste: si no lo marcas como hecho ni eliges cuándo, vuelve a avisar en 10 minutos
+  r.snoozeUntil = Date.now() + 10 * MIN;
+  showAlarm(r);
   if (state.settings.notify && 'Notification' in window && Notification.permission === 'granted') {
     const opts = { body: when + (r.notes ? '\n' + r.notes : ''), icon: 'icons/icon-192.png', badge: 'icons/favicon-32.png', tag: r.id, data: { id: r.id }, renotify: true,
-      actions: [{ action: 'snooze', title: 'Posponer 10 min' }, { action: 'done', title: 'Hecho' }] };
+      actions: [{ action: 'done', title: 'Hecho' }, { action: 'snooze', title: 'Avísame en 10 min' }] };
     if (navigator.serviceWorker && navigator.serviceWorker.controller) navigator.serviceWorker.ready.then(reg => reg.showNotification(r.title, opts)).catch(() => { });
     else try { new Notification(r.title, opts); } catch (e) { }
   }
@@ -516,7 +574,6 @@ function itemHTML(r, at = r.due, { virtual = false, showDay = false } = {}) {
         <div class="title">${esc(r.title)}</div>
         <div class="meta">${meta.join('')}</div>
       </div>
-      ${r.priority && !r.done ? '<span class="flag" title="Importante"></span>' : ''}
       <span class="rel ${relCls}">${rel}</span>
     </div>
   </div>`;
@@ -529,7 +586,7 @@ function greeting() {
   return state.settings.name ? `${g}, ${esc(state.settings.name)}` : g;
 }
 const pending = () => state.reminders.filter(r => !r.done && r.due != null);
-const sortRem = (a, b) => (b.priority ? 1 : 0) - (a.priority ? 1 : 0) || a.due - b.due;
+const sortRem = (a, b) => a.due - b.due;
 
 function countdown(ms) {
   const a = Math.max(0, ms - Date.now());
@@ -566,7 +623,7 @@ function renderHome() {
   if (next) {
     hero = `<div class="hero" data-id="${next.id}" data-act="edit">
       <svg class="hero-bell" viewBox="0 0 512 512"><use href="#bell"/></svg>
-      <div class="hero-date">${dayFull(new Date(next.due))} · ${fmtTime(new Date(next.due))}</div>
+      <div class="hero-date">${(d => cap(d.toLocaleDateString('es-ES', { weekday: 'long' })) + ' ' + d.getDate() + (d.getMonth() !== new Date().getMonth() ? ' ' + d.toLocaleDateString('es-ES', { month: 'short' }).replace('.', '') : ''))(new Date(next.due))} · ${fmtTime(new Date(next.due))}</div>
       <h2>${esc(next.title)}${next.repeat !== 'none' && next.repeat ? `<small>${REPEAT_LABEL[next.repeat]}</small>` : ''}</h2>
       <div class="count"><span style="opacity:.8;font-weight:600">Faltan</span> <span id="heroCount">${countdown(next.due)}</span></div>
     </div>`;
@@ -1069,7 +1126,7 @@ $('#importFile').addEventListener('change', async e => {
 
 /* ---------- Hoja: crear / editar ---------- */
 const sheet = $('#sheet'), sheetScrim = $('#sheetScrim');
-const f = { title: $('#fTitle'), notes: $('#fNotes'), date: $('#fDate'), time: $('#fTime'), repeat: $('#fRepeat'), alert: $('#fAlert'), priority: $('#fPriority'), cal: $('#fCal') };
+const f = { title: $('#fTitle'), notes: $('#fNotes'), date: $('#fDate'), time: $('#fTime'), repeat: $('#fRepeat'), alert: $('#fAlert'), cal: $('#fCal') };
 let editing = null, cat = 'personal', manual = {}, lastParse = null;
 
 $('#catPicker').innerHTML = CATS.map(c => `<button type="button" data-cat="${c.id}" style="--c:${catColor(c.id)}"><i></i>${c.name}</button>`).join('');
@@ -1154,7 +1211,7 @@ function openSheet({ id, date, text } = {}) {
     f.title.value = editing.title; f.notes.value = editing.notes || '';
     f.date.value = ymd(d); f.time.value = hm(d);
     f.repeat.value = editing.repeat || 'none'; f.alert.value = String(editing.alert || 0);
-    f.priority.checked = !!editing.priority; f.cal.checked = !!(editing.wantCal || editing.calEventId);
+    f.cal.checked = !!(editing.wantCal || editing.calEventId);
     cat = editing.cat || 'personal';
     $('#fCal').closest('.toggle-row').hidden = !cloud.connected();
     $('#btnAddCal').hidden = cloud.connected();
@@ -1163,7 +1220,7 @@ function openSheet({ id, date, text } = {}) {
     f.date.value = date ? ymd(startOfDay(date)) : ''; f.time.value = '';
     if (date) manual.date = true;
     f.title.value = text || ''; f.notes.value = '';
-    f.repeat.value = 'none'; f.alert.value = '0'; f.priority.checked = false;
+    f.repeat.value = 'none'; f.alert.value = '0';
     f.cal.checked = !!state.settings.autoCal;
     cat = 'personal';
     $('#fCal').closest('.toggle-row').hidden = false;
@@ -1239,7 +1296,7 @@ sheet.addEventListener('submit', e => {
   const due = +fromParts(f.date.value, f.time.value);
   const data = {
     title, notes: f.notes.value.trim(), due,
-    repeat: f.repeat.value, alert: +f.alert.value, cat, priority: f.priority.checked,
+    repeat: f.repeat.value, alert: +f.alert.value, cat, priority: false,
     anchorDay: new Date(due).getDate(),
   };
   let r;
@@ -1408,7 +1465,7 @@ const cloud = (() => {
 
   /* --- Calendar: un evento por recordatorio, con su id fijo para no duplicar --- */
   const evId = id => 'rmd' + [...id].map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join('');
-  const calSig = r => JSON.stringify([r.title, r.notes || '', r.repeat || 'none', r.alert || 0, r.cat, !!r.done,
+  const calSig = r => JSON.stringify(['v2', r.title, r.notes || '', r.repeat || 'none', r.alert || 0, r.cat, !!r.done,
     (r.repeat && r.repeat !== 'none') ? hm(new Date(r.due)) + '|' + r.anchorDay : r.due]);
   function localISO(ms) { const d = new Date(ms); return `${ymd(d)}T${hm(d)}:00`; }
   function eventBody(r) {
@@ -1419,7 +1476,7 @@ const cloud = (() => {
       description: (r.notes ? r.notes + '\n\n' : '') + 'Creado con Reminder 🔔',
       start: { dateTime: localISO(r.due), timeZone: tz },
       end: { dateTime: localISO(r.due + 30 * MIN), timeZone: tz },
-      reminders: r.done ? { useDefault: false, overrides: [] } : { useDefault: false, overrides: [{ method: 'popup', minutes: r.alert || 0 }] },
+      reminders: r.done ? { useDefault: false, overrides: [] } : { useDefault: false, overrides: [...new Set([r.alert || 0, 1440])].map(m => ({ method: 'popup', minutes: m })) },
       colorId: GCOLOR[r.cat] || '8',
       extendedProperties: { private: { reminderId: r.id } },
       transparency: 'transparent',
@@ -1548,6 +1605,7 @@ function boot() {
     app.addEventListener('animationend', e => { if (e.target === app) app.classList.remove('enter'); }, { once: false });
     splash.classList.add('out');
     setTimeout(() => splash.remove(), 500);
+    showTomorrow();
     checkAlarms(); render();
     window.addEventListener('resize', () => { if (tab === 'home') renderHome(); });
     const a = params.get('action'), id = params.get('id');

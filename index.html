@@ -29,7 +29,7 @@
       } catch (e) { document.documentElement.dataset.theme = 'dark'; }
     })();
   </script>
-  <link rel="stylesheet" href="styles.css?v=13">
+  <link rel="stylesheet" href="styles.css?v=15">
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -167,10 +167,6 @@
       </div>
 
       <label class="toggle-row">
-        <span><b>Importante</b><small>Se queda arriba y con marca</small></span>
-        <input type="checkbox" id="fPriority"><i class="switch"></i>
-      </label>
-      <label class="toggle-row">
         <span><b>Añadir a mi calendario</b><small id="calProviderHint">Google Calendar</small></span>
         <input type="checkbox" id="fCal"><i class="switch"></i>
       </label>
@@ -182,9 +178,11 @@
     </div>
   </form>
 
+  <div id="alarm" class="overlay" role="alertdialog" aria-live="assertive"></div>
+  <div id="tomorrow" class="overlay" role="dialog"></div>
   <div id="toasts" aria-live="polite"></div>
   <input type="file" id="importFile" accept="application/json,.json" hidden>
 
-  <script src="app.js?v=13"></script>
+  <script src="app.js?v=15"></script>
 </body>
 </html>
