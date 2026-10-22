@@ -87,6 +87,8 @@ const ICON = {
 const KEY = 'reminder.v1';
 const DEFAULT_SETTINGS = { theme: 'auto', name: '', calProvider: 'google', autoCal: false, notify: false, sound: true };
 let state = load();
+// Una vez: pasar a Auto por horario (el botón de tema de arriba ya no existe)
+if (!state.settings.autoV2) { state.settings.theme = 'auto'; state.settings.autoV2 = true; try { localStorage.setItem('reminder.v1', JSON.stringify(state)); } catch (e) { } }
 
 function load() {
   try {
@@ -459,14 +461,17 @@ menuScrim.addEventListener('click', () => openMenu(false));
 $$('#bellMenu button').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
 
 /* ---------- Tema ---------- */
-const mq = matchMedia('(prefers-color-scheme: dark)');
+// Auto: oscuro de 19:00 a 8:00, claro de 8:00 a 19:00
+const isNightNow = () => { const h = new Date().getHours(); return h >= 19 || h < 8; };
 function applyTheme() {
-  const t = state.settings.theme === 'auto' ? (mq.matches ? 'dark' : 'light') : state.settings.theme;
+  const t = state.settings.theme === 'auto' ? (isNightNow() ? 'dark' : 'light') : state.settings.theme;
+  if (document.documentElement.dataset.theme === t) return;
   document.documentElement.dataset.theme = t;
   $('meta[name="theme-color"]').setAttribute('content', t === 'dark' ? '#0B1220' : '#FBF7F1');
 }
-mq.addEventListener?.('change', applyTheme);
-$('#themeBtn').addEventListener('click', () => {
+setInterval(applyTheme, 30000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) applyTheme(); });
+$('#themeBtn')?.addEventListener('click', () => {
   state.settings.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
   applyTheme(); commit();
 });
@@ -575,8 +580,7 @@ function renderHome() {
     ['Atrasados', overdue, 'overdue'],
     ['Hoy', upcoming.filter(r => r.due < tomorrow0)],
     ['Mañana', upcoming.filter(r => r.due >= tomorrow0 && r.due < tomorrow0 + DAY)],
-    ['Próximos 7 días', upcoming.filter(r => r.due >= tomorrow0 + DAY && r.due < today0 + 8 * DAY)],
-    ['Más adelante', upcoming.filter(r => r.due >= today0 + 8 * DAY)],
+    ['Próximos 7 días', upcoming.filter(r => r.due >= tomorrow0 + DAY && r.due < now + 7 * DAY)],
   ].filter(g => g[1].length).map(([t, arr, cls]) => [t, arr.sort(sortRem).map(r => ({ r, at: r.due,
       showDay: !['Hoy', 'Mañana', 'Atrasados'].includes(t) || (t === 'Atrasados' && !sameDay(new Date(r.due), new Date())) })), cls]);
 
@@ -599,6 +603,7 @@ function renderHome() {
     <div class="group"><div class="group-title ${cls || ''}">${t}</div>
     <div class="list">${arr.map(o => itemHTML(o.r, o.at, { showDay: o.showDay, virtual: o.virtual })).join('')}</div></div>`).join('')
     : homeFilter !== 'next' ? `<p class="empty-mini">Nada ${homeFilter === 'week' ? 'esta semana' : 'este mes'}.</p>`
+    : list.length ? `<p class="empty-mini">Nada en los próximos 7 días.</p>`
     : `<div class="empty">
         <span class="app-icon"><svg><use href="#bell"/></svg></span>
         <h3>Tu lista está vacía</h3>
@@ -615,7 +620,7 @@ function renderHome() {
       <div class="greet"><h1>${greeting()}</h1><p>${fmtLong(new Date())}</p></div>
       ${hero}
       <div class="stats">
-        <button class="stat${homeFilter === 'next' ? ' on' : ''}" data-hf="next"><b>${list.length}</b><span>Lo próximo</span></button>
+        <button class="stat${homeFilter === 'next' ? ' on' : ''}" data-hf="next"><b>${overdue.length + upcoming.filter(r => r.due < now + 7 * DAY).length}</b><span>Lo próximo</span></button>
         <button class="stat${homeFilter === 'week' ? ' on' : ''}" data-hf="week"><b>${weekCount}</b><span>Semanal</span></button>
         <button class="stat${homeFilter === 'month' ? ' on' : ''}" data-hf="month"><b>${monthCount}</b><span>Mensual</span></button>
       </div>
@@ -628,13 +633,12 @@ function renderHome() {
 function fitHome() {
   const main = $('#view-home .home-main');
   if (!main || query || $('#app').hidden) return;
-  const fabTop = $('#fab').getBoundingClientRect().top || window.innerHeight - 110;
+  const fabTop = window.innerHeight - 12;
   if (homeFilter !== 'next') { main.style.maxHeight = Math.max(160, fabTop - 10 - main.getBoundingClientRect().top) + 'px'; return; }
   main.style.maxHeight = '';
   const wraps = $$('.item-wrap', main);
   // Cabe hasta justo encima del botón +; lo demás está en la pestaña Recordatorios
-  const fab = $('#fab').getBoundingClientRect();
-  const limit = (fab.top > 0 ? fab.top : window.innerHeight - 110) + 22; // la fila puede rozar el borde del + sin tapar nada
+  const limit = window.innerHeight - 12;
   const bottoms = wraps.map(w => w.getBoundingClientRect().bottom + window.scrollY);
   let cut = false;
   wraps.forEach((w, i) => { if (cut || (i >= 1 && bottoms[i] > limit)) { w.hidden = true; cut = true; } });
@@ -821,7 +825,7 @@ function renderSettings() {
     <div class="card">
       <h4>Tú</h4>
       <div class="row"><span class="rl"><b>Tu nombre</b><small>Para el saludo</small></span><input type="text" data-input="name" value="${esc(s.name)}" placeholder="Opcional" maxlength="24"></div>
-      <div class="row"><span class="rl"><b>Apariencia</b></span>${seg('theme', [['auto', 'Auto'], ['light', 'Claro'], ['dark', 'Oscuro']])}</div>
+      <div class="row"><span class="rl"><b>Apariencia</b><small>Auto: oscuro de 19:00 a 8:00</small></span>${seg('theme', [['auto', 'Auto'], ['light', 'Claro'], ['dark', 'Oscuro']])}</div>
     </div>
     ${cloud.settingsCard()}
     <div class="card">
