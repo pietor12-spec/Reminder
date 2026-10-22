@@ -597,6 +597,17 @@ function countdown(ms) {
 }
 
 let homeFilter = 'next';
+// Fila de la línea de tiempo: título y hora en el color de su categoría
+function tlItem(r, at, late) {
+  const d = new Date(at);
+  const when = late && !sameDay(d, new Date()) ? `${dayLabel(d)} ${fmtTime(d)}` : fmtTime(d);
+  return `<div class="item-wrap" data-id="${r.id}">
+    <div class="swipe-bg done"><span>✓ Hecho</span></div>
+    <div class="item tl-item" style="--cat:${late ? 'var(--overdue)' : catColor(r.cat)}">
+      <div class="body" data-act="edit"><div class="title">${esc(r.title)}</div></div>
+      <span class="tl-time">${when}</span>
+    </div></div>`;
+}
 // Lo que ya ha pasado desde que creaste el recordatorio (o desde la repetición anterior)
 function heroProgress(r) {
   const per = { daily: DAY, weekdays: DAY, weekly: 7 * DAY, monthly: 30 * DAY, yearly: 365 * DAY }[r.repeat] || 30 * DAY;
@@ -645,13 +656,13 @@ function renderHome() {
     </div>`;
   }
 
-  let groups = [
-    ['Atrasados', overdue, 'overdue'],
-    ['Hoy', upcoming.filter(r => r.due < tomorrow0)],
-    ['Mañana', upcoming.filter(r => r.due >= tomorrow0 && r.due < tomorrow0 + DAY)],
-    ['Próximos 7 días', upcoming.filter(r => r.due >= tomorrow0 + DAY && r.due < now + 7 * DAY)],
-  ].filter(g => g[1].length).map(([t, arr, cls]) => [t, arr.sort(sortRem).map(r => ({ r, at: r.due,
-      showDay: !['Hoy', 'Mañana', 'Atrasados'].includes(t) || (t === 'Atrasados' && !sameDay(new Date(r.due), new Date())) })), cls]);
+  let groups = [];
+  if (overdue.length) groups.push(['Atrasados', overdue.sort(sortRem).map(r => ({ r, at: r.due })), 'overdue']);
+  {
+    const byDay = new Map();
+    upcoming.filter(r => r.due < now + 7 * DAY).sort(sortRem).forEach(r => { const k = ymd(new Date(r.due)); if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push({ r, at: r.due }); });
+    for (const [k, arr] of byDay) groups.push([dayFull(new Date(k + 'T12:00')), arr, '']);
+  }
 
   if (homeFilter !== 'next') {
     const s = homeFilter === 'week' ? w0 : new Date(t0.getFullYear(), t0.getMonth(), 1);
@@ -668,9 +679,10 @@ function renderHome() {
       .map(([k, arr]) => [dayFull(new Date(k + 'T12:00')), arr.sort((p, q) => p.at - q.at), new Date(k + 'T23:59') < new Date() ? 'overdue' : '']);
   }
 
-  const lists = groups.length ? groups.map(([t, arr, cls]) => `
-    <div class="group"><div class="group-title ${cls || ''}">${t}</div>
-    <div class="list">${arr.map(o => itemHTML(o.r, o.at, { showDay: o.showDay, virtual: o.virtual })).join('')}</div></div>`).join('')
+  const lists = groups.length ? `<div class="tl">` + groups.map(([t, arr, cls]) => `
+    <div class="group tl-group" style="--c:${cls === 'overdue' ? 'var(--overdue)' : catColor(arr[0].r.cat)}">
+      <div class="tl-day"><span class="tl-node"></span>${t}</div>
+      <div class="list">${arr.map(o => tlItem(o.r, o.at, cls === 'overdue')).join('')}</div></div>`).join('') + `</div>`
     : homeFilter !== 'next' ? `<p class="empty-mini">Nada ${homeFilter === 'week' ? 'esta semana' : 'este mes'}.</p>`
     : list.length ? `<p class="empty-mini">Nada en los próximos 7 días.</p>`
     : `<div class="empty">
@@ -1433,6 +1445,7 @@ sheet.addEventListener('submit', e => {
   vibrate(10);
   closeSheet(); commit(); bellRing();
 });
+$('#btnDone')?.addEventListener('click', () => { const id = editing?.id; closeSheet(); if (id) completeReminder(id); });
 $('#btnDelete').addEventListener('click', () => { const id = editing?.id; closeSheet(); if (id) deleteReminder(id); });
 $('#btnAddCal').addEventListener('click', () => { if (!editing) return; sendToCalendar(editing); save(); toast('Enviado a ' + PROVIDERS[state.settings.calProvider]); });
 
