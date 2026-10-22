@@ -703,3 +703,16 @@ button.stat:active { transform: scale(.97); }
 .tl-item .title { font-size: 16px; font-weight: 700; }
 .tl-time { font-weight: 800; font-size: 17px; color: var(--cat); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .sheet-actions .btn.primary { flex: 1; }
+
+/* Más aire entre la tarjeta/contadores y la lista */
+#view-home .stats { margin-bottom: 30px; }
+/* Semanal/Mensual: que no se corte el primer círculo */
+.home-main.scroll { padding-top: 6px; margin-top: -6px; padding-left: 2px; margin-left: -2px; }
+/* Botón de pantalla completa: solo en ordenador */
+.fs-btn { display: none; background: var(--surface); border: 1px solid var(--border); }
+.fs-btn .i-min { display: none; }
+.fs-btn.on .i-min { display: block; } .fs-btn.on .i-max { display: none; }
+@media (hover: hover) and (pointer: fine) and (min-width: 700px) { .fs-btn { display: grid; } }
+/* Calendario con el mismo formato que Inicio */
+.day-panel .tl { margin-top: 6px; }
+.tl-item.is-done .title { text-decoration: line-through; color: var(--muted); }

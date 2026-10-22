@@ -603,7 +603,7 @@ function tlItem(r, at, late) {
   const when = late && !sameDay(d, new Date()) ? `${dayLabel(d)} ${fmtTime(d)}` : fmtTime(d);
   return `<div class="item-wrap" data-id="${r.id}">
     <div class="swipe-bg done"><span>✓ Hecho</span></div>
-    <div class="item tl-item" style="--cat:${late ? 'var(--overdue)' : catColor(r.cat)}">
+    <div class="item tl-item${r.done ? ' is-done' : ''}" style="--cat:${r.done ? 'var(--faint)' : late ? 'var(--overdue)' : catColor(r.cat)}">
       <div class="body" data-act="edit"><div class="title">${esc(r.title)}</div></div>
       <span class="tl-time">${when}</span>
     </div></div>`;
@@ -843,9 +843,10 @@ function renderCalendar() {
       <div class="cal-grid">${cells}</div>
     </div>
     <div class="day-panel">
-      <h3>${sameDay(calSel, today) ? 'Hoy, ' + calSel.getDate() : fmtLong(calSel)}</h3>
-      <p class="sub">${selOcc.length ? `${selOcc.length} recordatorio${selOcc.length > 1 ? 's' : ''}` : 'Día libre'}</p>
-      <div class="list">${selOcc.map(o => itemHTML(o.r, o.at, { virtual: o.virtual })).join('')}</div>
+      ${selOcc.length ? '' : `<h3>${sameDay(calSel, today) ? 'Hoy, ' + calSel.getDate() : fmtLong(calSel)}</h3><p class="sub">Día libre</p>`}
+      ${selOcc.length ? `<div class="tl"><div class="group tl-group" style="--c:${catColor(selOcc[0].r.cat)}">
+        <div class="tl-day"><span class="tl-node"></span>${dayFull(calSel)}</div>
+        <div class="list">${selOcc.map(o => tlItem(o.r, o.at, !o.r.done && o.at < Date.now())).join('')}</div></div></div>` : ''}
       <button class="add-day" data-cal="add">${ICON.plus} Añadir en este día</button>
     </div>
   </div>`;
@@ -1410,6 +1411,13 @@ function closeSheet() {
   editing = null; f.title.blur();
 }
 $('#fab').addEventListener('click', () => sheet.classList.contains('open') ? closeSheet() : openSheet());
+/* Pantalla completa (en ordenador) */
+const fsBtn = $('#fsBtn');
+if (fsBtn && document.documentElement.requestFullscreen) {
+  const paintFs = () => fsBtn.classList.toggle('on', !!document.fullscreenElement);
+  fsBtn.addEventListener('click', () => { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(() => { }); });
+  document.addEventListener('fullscreenchange', paintFs);
+} else if (fsBtn) fsBtn.remove();
 $('#sheetCancel').addEventListener('click', closeSheet);
 sheetScrim.addEventListener('click', closeSheet);
 

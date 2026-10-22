@@ -29,7 +29,7 @@
       } catch (e) { document.documentElement.dataset.theme = 'dark'; }
     })();
   </script>
-  <link rel="stylesheet" href="styles.css?v=26">
+  <link rel="stylesheet" href="styles.css?v=28">
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -68,6 +68,10 @@
       </button>
       <div class="top-actions">
         <button class="icon-btn" id="searchBtn" aria-label="Buscar" hidden><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></button>
+        <button class="icon-btn fs-btn" id="fsBtn" aria-label="Pantalla completa" title="Pantalla completa">
+          <svg class="i-max" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+          <svg class="i-min" viewBox="0 0 24 24"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>
+        </button>
         <button id="fab" aria-label="Nuevo recordatorio"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
       </div>
     </header>
@@ -184,6 +188,6 @@
   <div id="toasts" aria-live="polite"></div>
   <input type="file" id="importFile" accept="application/json,.json,text/plain,.txt" hidden>
 
-  <script src="app.js?v=26"></script>
+  <script src="app.js?v=28"></script>
 </body>
 </html>
