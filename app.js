@@ -885,7 +885,7 @@ function renderSettings() {
     <div class="card">
       <h4>Tú</h4>
       <div class="row"><span class="rl"><b>Tu nombre</b><small>Para el saludo</small></span><input type="text" data-input="name" value="${esc(s.name)}" placeholder="Opcional" maxlength="24"></div>
-      <div class="row"><span class="rl"><b>Apariencia</b><small>Auto: oscuro de 19:00 a 8:00</small></span>${seg('theme', [['auto', 'Auto'], ['light', 'Claro'], ['dark', 'Oscuro']])}</div>
+      <div class="row"><span class="rl"><b>Apariencia</b></span>${seg('theme', [['auto', 'Auto'], ['light', 'Claro'], ['dark', 'Oscuro']])}</div>
     </div>
     ${cloud.settingsCard()}
     <div class="card">
@@ -895,7 +895,6 @@ function renderSettings() {
       <div class="row"><span class="rl"><b>Pendientes antiguos</b><small>Envía al calendario los que aún no están</small></span><button class="btn" data-set="calAll">Añadir</button></div>`
       : `<div class="row" style="flex-wrap:wrap"><span class="rl"><b>Mi calendario</b><small>Dónde se añaden tus recordatorios</small></span>${seg('calProvider', [['google', 'Google'], ['apple', 'Apple'], ['outlook', 'Outlook']])}</div>
       ${tog('autoCal', 'Añadir siempre a mi calendario', 'Cada nuevo recordatorio se envía al guardarlo')}`}
-      <div class="row"><span class="rl"><b>Exportar todo</b><small>Un archivo .ics con tus pendientes, para importarlo de golpe</small></span><button class="btn" data-set="exportIcs">.ics</button></div>
     </div>
     <div class="card">
       <h4>Avisos</h4>
@@ -908,7 +907,7 @@ function renderSettings() {
       <h4>App y datos</h4>
       ${installRow}
       <div class="row"><span class="rl"><b>Copia de seguridad</b><small>Archivo JSON: guárdala o pásala a otro dispositivo</small></span><span style="display:flex;gap:8px"><button class="btn" data-set="export">Exportar</button><button class="btn" data-set="import">Importar</button></span></div>
-      <div class="row"><span class="rl"><b>En texto</b><small>Copia tus recordatorios como texto o pega una lista para añadirla</small></span><span style="display:flex;gap:8px"><button class="btn" data-set="txtOut">Exportar</button><button class="btn" data-set="txtIn">Importar</button></span></div>
+      <div class="row"><span class="rl"><b>En texto</b><small>El código de tus datos para copiar y pegar</small></span><span style="display:flex;gap:8px"><button class="btn" data-set="txtOut">Exportar</button><button class="btn" data-set="txtIn">Importar</button></span></div>
       <div class="row"><span class="rl"><b>Borrar todo</b><small>Elimina todos los recordatorios de este dispositivo</small></span><button class="btn danger" data-set="wipe">Borrar</button></div>
     </div>
     <div class="foot"><span class="app-icon"><svg><use href="#bell"/></svg></span>Reminder 1.0 · Tus datos se guardan en este dispositivo</div>
@@ -1150,14 +1149,14 @@ $('#importFile').addEventListener('change', async e => {
 function openText(mode) {
   const out = mode === 'out';
   $('#saveBox').innerHTML = `<div class="save-card">
-    <div class="save-head"><div><h3>${out ? 'Exportar en texto' : 'Importar texto'}</h3>
-      <small>${out ? 'Copia el texto y guárdalo donde quieras' : 'Una por línea, en el formato exportado o en frase normal'}</small></div>
+    <div class="save-head"><div><h3>${out ? 'Exportar código' : 'Importar código'}</h3>
+      <small>${out ? 'Cópialo y guárdalo donde quieras' : 'Pega aquí el código que exportaste'}</small></div>
       <button class="icon-btn" data-sv="close" aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
-    <textarea id="pasteTxt" class="txt-box" rows="10" spellcheck="false" ${out ? 'readonly' : ''} placeholder="Llamar al dentista el 12/11 a las 9\nPagar el alquiler el 1 de noviembre a las 9 cada mes\n26/10/2026 | 11:00 | Fianza Gobierno Vasco | Casa"></textarea>
-    ${out ? `<button class="btn primary txt-act" data-sv="copy">Copiar texto</button>` : `<button class="btn primary txt-act" data-sv="paste">Importar</button>`}
+    <textarea id="pasteTxt" class="txt-box" rows="10" spellcheck="false" ${out ? 'readonly' : ''} placeholder='{"app":"Reminder","reminders":[ … ]}'></textarea>
+    ${out ? `<button class="btn primary txt-act" data-sv="copy">Copiar código</button>` : `<button class="btn primary txt-act" data-sv="paste">Importar</button>`}
     <div class="save-result" id="saveResult" hidden></div>
   </div>`;
-  if (out) $('#pasteTxt').value = buildTXT();
+  if (out) $('#pasteTxt').value = JSON.stringify({ app: 'Reminder', v: 1, exportado: new Date().toISOString(), reminders: state.reminders, tombstones: state.tombstones }, null, 2);
   $('#saveBox').classList.add('show');
   if (!out) setTimeout(() => $('#pasteTxt').focus(), 300);
 }
@@ -1170,7 +1169,7 @@ $('#saveBox').addEventListener('click', async e => {
     const ta = $('#pasteTxt');
     try { await navigator.clipboard.writeText(ta.value); }
     catch (err) { ta.removeAttribute('readonly'); ta.select(); document.execCommand('copy'); ta.setAttribute('readonly', ''); }
-    b.textContent = '✓ Copiado'; setTimeout(() => { b.textContent = 'Copiar texto'; }, 1800);
+    b.textContent = '✓ Copiado'; setTimeout(() => { b.textContent = 'Copiar código'; }, 1800);
   }
   else if (a === 'paste') { const t = $('#pasteTxt').value.trim(); if (t) doImport(/^\s*[\[{]/.test(t) ? 'json' : 'txt', t); }
 });
@@ -1437,7 +1436,10 @@ document.addEventListener('keydown', e => {
 
 /* ---------- Service worker ---------- */
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-  navigator.serviceWorker.register('sw.js').catch(() => { });
+  const hadSW = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register('sw.js').then(reg => reg.update()).catch(() => { });
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadSW && !reloaded && !document.body.classList.contains('sheet-open')) { reloaded = true; location.reload(); } });
   navigator.serviceWorker.addEventListener('message', e => {
     const { type, id, action } = e.data || {};
     if (type !== 'notif') return;

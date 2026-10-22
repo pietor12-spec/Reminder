@@ -631,3 +631,6 @@ button.stat:active { transform: scale(.97); }
 
 .txt-box { width: 100%; margin: 14px 0 12px; padding: 12px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; resize: vertical; }
 .txt-act { width: 100%; padding: 13px; border-radius: 14px; font-size: 15px; }
+
+.settings .seg { flex-wrap: nowrap; }
+.txt-box { white-space: pre; overflow: auto; }
