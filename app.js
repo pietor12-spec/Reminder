@@ -513,7 +513,7 @@ function setTab(t, { push = true } = {}) {
   $('#tabLabel').textContent = TABS[t];
   $$('#bellMenu button').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
   $('#fab').hidden = t === 'settings';
-  if (push) history.replaceState(null, '', t === 'home' ? location.pathname : '?tab=' + t);
+  if (push && location.search) history.replaceState(null, '', location.pathname);
   render();
   window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
 }
@@ -719,7 +719,7 @@ function renderHome() {
   }
 
   const lists = groups.length ? tlHTML(groups)
-    : homeFilter === 'day' ? `<p class="empty-mini">${dayFull(calSel)}: día libre.</p><button class="add-day" data-cal="add" style="max-width:320px;margin:0 auto;display:flex">${ICON.plus} Añadir en este día</button>`
+    : homeFilter === 'day' ? `<p class="empty-mini">${dayFull(calSel)}: día libre.</p>`
     : homeFilter !== 'next' ? `<p class="empty-mini">Nada ${homeFilter === 'week' ? 'esta semana' : 'este mes'}.</p>`
     : list.length ? `<p class="empty-mini">Nada en los próximos 7 días.</p>`
     : `<div class="empty">
@@ -742,9 +742,9 @@ function renderHome() {
         <button class="stat${homeFilter === 'week' ? ' on' : ''}" data-hf="week"><b>${weekCount}</b><span>Semanal</span></button>
         <button class="stat${homeFilter === 'month' ? ' on' : ''}" data-hf="month"><b>${monthCount}</b><span>Mensual</span></button>
       </div>
-      ${isDesktop() ? `<div class="home-cal">${calCardHTML()}</div>` : ''}
+      <div class="home-cal">${calCardHTML()}</div>
     </div>
-    <div class="home-main${homeFilter !== 'next' || isDesktop() ? ' scroll' : ''}">${!isDesktop() && (homeFilter === 'month' || homeFilter === 'day') ? `<div class="home-cal mobile">${calCardHTML()}</div>` : ''}${lists}</div>
+    <div class="home-main scroll">${lists}</div>
   </div>`;
   requestAnimationFrame(fitHome);
 }
@@ -754,7 +754,7 @@ function fitHome() {
   const main = $('#view-home .home-main');
   if (!main || query || $('#app').hidden) return;
   const fabTop = window.innerHeight - 12;
-  if (homeFilter !== 'next' || isDesktop()) { main.style.maxHeight = Math.max(160, fabTop - 10 - main.getBoundingClientRect().top) + 'px'; return; }
+  main.style.maxHeight = Math.max(120, fabTop - 4 - main.getBoundingClientRect().top) + 'px'; return;
   main.style.maxHeight = '';
   const wraps = $$('.item-wrap', main);
   // Cabe hasta justo encima del botón +; lo demás está en la pestaña Recordatorios
@@ -1730,7 +1730,7 @@ function boot() {
   setBaseline();
   if (cloud.boot()) return; // redirigiendo a Google para renovar el acceso
   const params = new URLSearchParams(location.search);
-  setTab(params.get('tab') || 'home', { push: false });
+  setTab('home', { push: false }); // siempre empieza en Inicio
   setInterval(tick, 1000);
   setInterval(checkAlarms, 15000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { if (cloud.refreshIfNeeded()) return; checkAlarms(); render(); cloud.sync(); } });
