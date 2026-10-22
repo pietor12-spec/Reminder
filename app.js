@@ -1689,6 +1689,7 @@ const cloud = (() => {
 
 /* ---------- Arranque ---------- */
 function boot() {
+  document.getElementById('saveBtn')?.remove(); // por si el móvil aún tiene la página antigua
   applyTheme();
   setBaseline();
   if (cloud.boot()) return; // redirigiendo a Google para renovar el acceso

@@ -1,6 +1,6 @@
 /* Reminder — service worker: funciona sin conexión y gestiona las notificaciones */
-const CACHE = 'reminder-v17';
-const SHELL = ['./', 'index.html', 'styles.css?v=17', 'app.js?v=17', 'manifest.webmanifest',
+const CACHE = 'reminder-v18';
+const SHELL = ['./', 'index.html', 'styles.css?v=18', 'app.js?v=18', 'manifest.webmanifest',
   'icons/logo.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/apple-touch-icon.png', 'icons/favicon-32.png'];
 
 self.addEventListener('install', e => {
@@ -17,7 +17,7 @@ self.addEventListener('fetch', e => {
   if (url.origin !== location.origin && !isFont) return;
   // Red primero para la página (para recibir actualizaciones), caché primero para lo demás
   if (req.mode === 'navigate') {
-    e.respondWith(fetch(req).then(r => { const copy = r.clone(); caches.open(CACHE).then(c => c.put('index.html', copy)); return r; })
+    e.respondWith(fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }).then(r => { const copy = r.clone(); caches.open(CACHE).then(c => c.put('index.html', copy)); return r; })
       .catch(() => caches.match('index.html')));
     return;
   }
