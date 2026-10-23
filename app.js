@@ -674,6 +674,33 @@ function tlHTML(groups, selKey) {
       <div class="tl-day"><span class="tl-node"></span>${t}</div>
       <div class="list">${arr.map(o => tlItem(o.r, o.at, cls === 'overdue' || (!o.r.done && o.at < Date.now()))).join('')}</div></div>`).join('') + `</div>`;
 }
+// Calendario grande tipo agenda (ordenador): cada día muestra sus citas
+function bigCalHTML() {
+  const mo = calMonth.getMonth();
+  const offset = (calMonth.getDay() + 6) % 7;
+  const gridStart = addDays(calMonth, -offset), gridEnd = addDays(gridStart, 42);
+  const map = occMap(gridStart, gridEnd);
+  const today = new Date();
+  const monthName = cap(calMonth.toLocaleDateString('es-ES', { month: 'long' })) + ' ' + calMonth.getFullYear();
+  let cells = '';
+  for (let i = 0; i < 42; i++) {
+    const d = addDays(gridStart, i), k = ymd(d), occ = map.get(k) || [];
+    const shown = occ.slice(0, 3);
+    cells += `<div class="bc-cell${d.getMonth() !== mo ? ' other' : ''}${sameDay(d, today) ? ' today' : ''}${sameDay(d, calSel) && homeFilter === 'day' ? ' sel' : ''}" data-day="${k}">
+      <span class="bc-num">${d.getDate() === 1 ? d.toLocaleDateString('es-ES', { month: 'short' }).replace('.', '') + ' ' : ''}${d.getDate()}</span>
+      <div class="bc-evs">${shown.map(o => `<button class="bc-ev${o.r.done ? ' done' : ''}" data-id="${o.r.id}" data-act="edit" style="--cat:${o.r.done ? 'var(--faint)' : catColor(o.r.cat)}" title="${esc(o.r.title)}${o.r.place ? ' · ' + esc(o.r.place) : ''}"><b>${fmtTime(new Date(o.at))}</b>${esc(o.r.title)}</button>`).join('')}
+        ${occ.length > 3 ? `<span class="bc-more">+${occ.length - 3} más</span>` : ''}</div>
+    </div>`;
+  }
+  return `<div class="bc">
+    <div class="bc-head"><h2>${monthName}</h2>
+      <div class="nav"><button class="pill-btn" data-cal="today">Hoy</button>
+        <button class="icon-btn" data-cal="prev" aria-label="Mes anterior">${ICON.left}</button>
+        <button class="icon-btn" data-cal="next" aria-label="Mes siguiente">${ICON.right}</button></div></div>
+    <div class="bc-dows">${['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map(x => `<span>${x}</span>`).join('')}</div>
+    <div class="bc-grid">${cells}</div>
+  </div>`;
+}
 // Calendario del mes (pestaña Calendario y, en ordenador, Inicio)
 function calCardHTML() {
   const mo = calMonth.getMonth();
@@ -798,9 +825,9 @@ function renderHome() {
         <button class="stat${homeFilter === 'week' ? ' on' : ''}" data-hf="week"><b>${weekCount}</b><span>Semanal</span></button>
         <button class="stat${homeFilter === 'month' ? ' on' : ''}" data-hf="month"><b>${monthCount}</b><span>Mensual</span></button>
       </div>
-      ${isDesktop() ? `<div class="home-cal">${calCardHTML()}</div>` : ''}
+      ${isDesktop() ? `<div class="home-main scroll">${lists}</div>` : ''}
     </div>
-    <div class="home-main scroll">${lists}</div>
+    ${isDesktop() ? `<div class="home-bigcal">${bigCalHTML()}</div>` : `<div class="home-main scroll">${lists}</div>`}
   </div>`;
   requestAnimationFrame(fitHome);
 }
