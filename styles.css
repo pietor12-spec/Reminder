@@ -961,11 +961,18 @@ button.stat:active { transform: scale(.97); }
 @media (min-width: 900px) { body:has(#view-home:not([hidden])) main { max-width: none; } }
 @media (min-width: 1700px) { .home-layout { grid-template-columns: 400px 1fr; gap: 36px; } }
 
-/* Hoy: todo el cuadrado iluminado · Día marcado: color del aviso */
+/* Hoy y día marcado: mismo estilo, casilla entera iluminada con borde completo (colores del aviso combinados) */
 @media (min-width: 900px) {
-  .bc-cell.today { background: color-mix(in srgb, var(--brand-2) 13%, var(--surface)); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--brand-2) 45%, transparent); }
-  .bc-cell.today:hover { background: color-mix(in srgb, var(--brand-2) 18%, var(--surface)); }
-  .bc-cell.sel { background: color-mix(in srgb, var(--sc, var(--brand-2)) 16%, var(--surface)); box-shadow: inset 0 0 0 2px var(--sc, var(--brand-2)); }
+  .bc-cell.today, .bc-cell.sel { background: none; box-shadow: none; }
+  .bc-cell.today::before, .bc-cell.sel::before, .bc-cell.today::after, .bc-cell.sel::after { content: ""; position: absolute; inset: 2px; border-radius: 9px; pointer-events: none; }
+  .bc-cell.today::before, .bc-cell.sel::before { background: var(--g); opacity: .16; z-index: 0; }
+  .bc-cell.today::after, .bc-cell.sel::after { padding: 2px; background: var(--g);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); z-index: 2; }
+  .bc-cell.today { --g: linear-gradient(135deg, var(--brand-1), var(--brand-2)); }
+  .bc-cell.sel { --g: var(--sg, linear-gradient(135deg, var(--brand-1), var(--brand-2))); }
+  .bc-cell > * { position: relative; z-index: 1; }
   .bc-cell.sel .bc-num { color: var(--sc, var(--brand-2)); }
-  .bc-cell.today.sel .bc-num { color: #fff; }
+  .bc-cell.today .bc-num { color: #fff; }
+  .bc-cell.today:hover::before, .bc-cell.sel:hover::before { opacity: .22; }
 }

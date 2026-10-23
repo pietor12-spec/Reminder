@@ -675,6 +675,14 @@ function tlHTML(groups, selKey) {
       <div class="list">${arr.map(o => tlItem(o.r, o.at, cls === 'overdue' || (!o.r.done && o.at < Date.now()))).join('')}</div></div>`).join('') + `</div>`;
 }
 // Calendario grande tipo agenda (ordenador): cada día muestra sus citas
+function cellColors(occ) {
+  // Colores de los avisos del día (hasta 3 distintos) para iluminar la casilla
+  const live = occ.filter(o => !o.r.done), src = live.length ? live : occ;
+  const cs = [...new Set(src.map(o => catColor(o.r.cat)))].slice(0, 3);
+  if (!cs.length) return '';
+  const g = cs.length === 1 ? `${cs[0]}, ${cs[0]}` : cs.join(', ');
+  return ` style="--sc:${cs[0]};--sg:linear-gradient(135deg, ${g})"`;
+}
 function bigCalHTML() {
   const mo = calMonth.getMonth();
   const offset = (calMonth.getDay() + 6) % 7;
@@ -686,7 +694,7 @@ function bigCalHTML() {
   for (let i = 0; i < 42; i++) {
     const d = addDays(gridStart, i), k = ymd(d), occ = map.get(k) || [];
     const shown = occ;
-    cells += `<div class="bc-cell${d.getMonth() !== mo ? ' other' : ''}${sameDay(d, today) ? ' today' : ''}${sameDay(d, calSel) && homeFilter === 'day' ? ' sel' : ''}" data-day="${k}"${occ.length ? ` style="--sc:${catColor((occ.find(o => !o.r.done) || occ[0]).r.cat)}"` : ''}>
+    cells += `<div class="bc-cell${d.getMonth() !== mo ? ' other' : ''}${sameDay(d, today) ? ' today' : ''}${sameDay(d, calSel) && homeFilter === 'day' ? ' sel' : ''}" data-day="${k}"${cellColors(occ)}>
       <span class="bc-num">${d.getDate() === 1 ? d.toLocaleDateString('es-ES', { month: 'short' }).replace('.', '') + ' ' : ''}${d.getDate()}</span>
       <div class="bc-evs">${shown.map(o => `<button class="bc-ev${o.r.done ? ' done' : ''}" data-id="${o.r.id}" data-act="edit" style="--cat:${o.r.done ? 'var(--faint)' : catColor(o.r.cat)}" title="${esc(o.r.title)}${o.r.place ? ' · ' + esc(o.r.place) : ''}"><b>${fmtTime(new Date(o.at))}</b><span class="bc-t">${esc(o.r.title)}</span></button>`).join('')}<span class="bc-more" hidden></span></div>
     </div>`;
