@@ -888,3 +888,11 @@ button.stat:active { transform: scale(.97); }
 
 /* Hoja de añadir: sin pista, sin notas y sin atajos Hoy/Mañana */
 #nlHint, #fNotes, #dateChips { display: none !important; }
+
+/* Hoja: Cancelar y Guardar abajo */
+#sheet .sheet-body { padding-top: 10px; }
+.sheet-foot { position: relative; display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px; padding: 12px 16px calc(14px + var(--safe-b)); border-top: 1px solid var(--border); background: var(--surface); border-radius: 0 0 26px 26px; }
+.sheet-foot .btn { padding: 14px; border-radius: 16px; font-size: 16px; }
+.sheet-foot #sheetSave:disabled { opacity: .45; filter: grayscale(.4); cursor: not-allowed; color: #fff; }
+.sheet-foot .missing { position: absolute; left: 0; right: 0; top: -22px; text-align: center; }
+#sheet { padding-bottom: 0; }

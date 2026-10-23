@@ -29,7 +29,7 @@
       } catch (e) { document.documentElement.dataset.theme = 'dark'; }
     })();
   </script>
-  <link rel="stylesheet" href="styles.css?v=43">
+  <link rel="stylesheet" href="styles.css?v=44">
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -105,12 +105,7 @@
   <div id="sheetScrim" class="scrim"></div>
   <form id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" autocomplete="off">
     <div class="grabber"></div>
-    <div class="sheet-head">
-      <button type="button" class="link" id="sheetCancel">Cancelar</button>
-      <h2 id="sheetTitle">Nuevo recordatorio</h2>
-      <button type="submit" class="link strong" id="sheetSave">Guardar</button>
-      <div class="missing" id="missing" hidden></div>
-    </div>
+    <h2 id="sheetTitle" hidden>Nuevo recordatorio</h2>
 
     <div class="sheet-body">
       <div class="title-wrap">
@@ -177,11 +172,16 @@
         <input type="checkbox" id="fDayBefore" checked><i class="switch"></i>
       </label>
 
-      <div class="sheet-actions" id="editActions" hidden>
+      <div class="sheet-actions" id="editActions" hidden style="display:none !important">
         <button type="button" class="btn ghost" id="btnAddCal">Enviar al calendario</button>
         <button type="button" class="btn primary" id="btnDone">✓ Hecho</button>
         <button type="button" class="btn ghost danger" id="btnDelete">Eliminar</button>
       </div>
+    </div>
+    <div class="sheet-foot">
+      <div class="missing" id="missing" hidden></div>
+      <button type="button" class="btn ghost" id="sheetCancel">Cancelar</button>
+      <button type="submit" class="btn primary" id="sheetSave">Guardar</button>
     </div>
   </form>
 
@@ -191,6 +191,6 @@
   <div id="toasts" aria-live="polite"></div>
   <input type="file" id="importFile" accept="application/json,.json,text/plain,.txt" hidden>
 
-  <script src="app.js?v=43"></script>
+  <script src="app.js?v=44"></script>
 </body>
 </html>
