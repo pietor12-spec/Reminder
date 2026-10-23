@@ -685,11 +685,10 @@ function bigCalHTML() {
   let cells = '';
   for (let i = 0; i < 42; i++) {
     const d = addDays(gridStart, i), k = ymd(d), occ = map.get(k) || [];
-    const shown = occ.slice(0, 3);
+    const shown = occ;
     cells += `<div class="bc-cell${d.getMonth() !== mo ? ' other' : ''}${sameDay(d, today) ? ' today' : ''}${sameDay(d, calSel) && homeFilter === 'day' ? ' sel' : ''}" data-day="${k}">
       <span class="bc-num">${d.getDate() === 1 ? d.toLocaleDateString('es-ES', { month: 'short' }).replace('.', '') + ' ' : ''}${d.getDate()}</span>
-      <div class="bc-evs">${shown.map(o => `<button class="bc-ev${o.r.done ? ' done' : ''}" data-id="${o.r.id}" data-act="edit" style="--cat:${o.r.done ? 'var(--faint)' : catColor(o.r.cat)}" title="${esc(o.r.title)}${o.r.place ? ' · ' + esc(o.r.place) : ''}"><b>${fmtTime(new Date(o.at))}</b>${esc(o.r.title)}</button>`).join('')}
-        ${occ.length > 3 ? `<span class="bc-more">+${occ.length - 3} más</span>` : ''}</div>
+      <div class="bc-evs">${shown.map(o => `<button class="bc-ev${o.r.done ? ' done' : ''}" data-id="${o.r.id}" data-act="edit" style="--cat:${o.r.done ? 'var(--faint)' : catColor(o.r.cat)}" title="${esc(o.r.title)}${o.r.place ? ' · ' + esc(o.r.place) : ''}"><b>${fmtTime(new Date(o.at))}</b><span class="bc-t">${esc(o.r.title)}</span></button>`).join('')}<span class="bc-more" hidden></span></div>
     </div>`;
   }
   return `<div class="bc">
@@ -837,7 +836,7 @@ function fitHome() {
   const main = $('#view-home .home-main');
   if (!main || query || $('#app').hidden) return;
   const fabTop = viewH() - 16;
-  if (isDesktop()) { main.style.maxHeight = Math.max(120, fabTop - 4 - main.getBoundingClientRect().top) + 'px'; return; }
+  if (isDesktop()) { fitList(main); fitBigCal(); return; }
   fitList(main); return;
   main.style.maxHeight = '';
   const wraps = $$('.item-wrap', main);
@@ -931,6 +930,18 @@ function renderCalendar() {
   requestAnimationFrame(() => fitList($('#view-calendar .cal-list')));
 }
 // Ajusta la lista al hueco libre cortando justo después del último recordatorio que cabe entero
+function fitBigCal() {
+  // En cada día solo se ven citas completas; las que no caben pasan a «+N más»
+  for (const box of $$('.bc-evs')) {
+    const evs = $$('.bc-ev', box), more = $('.bc-more', box);
+    evs.forEach(e => e.hidden = false); more.hidden = true;
+    const lim = box.getBoundingClientRect().bottom + 0.5;
+    if (!evs.length || evs[evs.length - 1].getBoundingClientRect().bottom <= lim) continue;
+    let n = evs.length;
+    const fits = () => { more.hidden = false; more.textContent = `+${evs.length - n} más`; return more.getBoundingClientRect().bottom <= lim; };
+    while (n > 0) { n--; evs[n].hidden = true; const last = n ? evs[n - 1].getBoundingClientRect().bottom <= lim : true; if (last && fits()) break; }
+  }
+}
 function fitList(l) {
   if (!l) return;
   l.style.maxHeight = '';
