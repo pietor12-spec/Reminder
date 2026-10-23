@@ -885,3 +885,6 @@ button.stat:active { transform: scale(.97); }
   #view-home .greet.today-head { margin-bottom: 10px; }
   #view-home .hero.hero2 { min-height: 0; padding: 16px 20px; }
 }
+
+/* Hoja de añadir: sin pista, sin notas y sin atajos Hoy/Mañana */
+#nlHint, #fNotes, #dateChips { display: none !important; }

@@ -444,7 +444,7 @@ $('#alarm').addEventListener('click', e => {
 /* Al abrir la app: lo que tienes mañana */
 function tomorrowList() {
   const t1 = addDays(startOfDay(new Date()), 1), t2 = addDays(t1, 1), out = [];
-  for (const r of state.reminders) if (!r.done) for (const t of occurrencesBetween(r, +t1, +t2)) out.push({ r, at: t });
+  for (const r of state.reminders) if (!r.done && r.dayBefore !== false) for (const t of occurrencesBetween(r, +t1, +t2)) out.push({ r, at: t });
   return out.sort((x, y) => x.at - y.at);
 }
 function showTomorrow() {
@@ -1278,7 +1278,7 @@ $('#saveBox').addEventListener('click', async e => {
 
 /* ---------- Hoja: crear / editar ---------- */
 const sheet = $('#sheet'), sheetScrim = $('#sheetScrim');
-const f = { title: $('#fTitle'), notes: $('#fNotes'), date: $('#fDate'), time: $('#fTime'), repeat: $('#fRepeat'), alert: $('#fAlert'), cal: $('#fCal') };
+const f = { title: $('#fTitle'), notes: $('#fNotes'), date: $('#fDate'), time: $('#fTime'), repeat: $('#fRepeat'), alert: $('#fAlert'), cal: $('#fCal'), dayBefore: $('#fDayBefore') };
 let editing = null, cat = 'personal', manual = {}, lastParse = null;
 
 $('#catPicker').innerHTML = CATS.map(c => `<button type="button" data-cat="${c.id}" style="--c:${catColor(c.id)}"><i></i>${c.name}</button>`).join('');
@@ -1365,6 +1365,7 @@ function openSheet({ id, date, text } = {}) {
     f.date.value = ymd(d); f.time.value = hm(d);
     f.repeat.value = editing.repeat || 'none'; f.alert.value = String(editing.alert || 0);
     f.cal.checked = !!(editing.wantCal || editing.calEventId);
+    f.dayBefore.checked = editing.dayBefore !== false;
     cat = editing.cat || 'personal';
     $('#fCal').closest('.toggle-row').hidden = !cloud.connected();
     $('#btnAddCal').hidden = cloud.connected();
@@ -1375,6 +1376,7 @@ function openSheet({ id, date, text } = {}) {
     f.title.value = text || ''; f.notes.value = '';
     f.repeat.value = 'none'; f.alert.value = '0';
     f.cal.checked = !!state.settings.autoCal;
+    f.dayBefore.checked = true;
     cat = 'personal';
     $('#fCal').closest('.toggle-row').hidden = false;
     if (text) onTitleInput();
@@ -1456,7 +1458,7 @@ sheet.addEventListener('submit', e => {
   const due = +fromParts(f.date.value, f.time.value);
   const data = {
     title, notes: f.notes.value.trim(), due,
-    repeat: f.repeat.value, alert: +f.alert.value, cat, priority: false,
+    repeat: f.repeat.value, alert: +f.alert.value, cat, priority: false, dayBefore: f.dayBefore.checked,
     anchorDay: new Date(due).getDate(),
   };
   let r;
@@ -1630,7 +1632,7 @@ const cloud = (() => {
 
   /* --- Calendar: un evento por recordatorio, con su id fijo para no duplicar --- */
   const evId = id => 'rmd' + [...id].map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join('');
-  const calSig = r => JSON.stringify(['v2', r.title, r.notes || '', r.repeat || 'none', r.alert || 0, r.cat, !!r.done,
+  const calSig = r => JSON.stringify(['v3', r.dayBefore !== false, r.title, r.notes || '', r.repeat || 'none', r.alert || 0, r.cat, !!r.done,
     (r.repeat && r.repeat !== 'none') ? hm(new Date(r.due)) + '|' + r.anchorDay : r.due]);
   function localISO(ms) { const d = new Date(ms); return `${ymd(d)}T${hm(d)}:00`; }
   function eventBody(r) {
@@ -1641,7 +1643,7 @@ const cloud = (() => {
       description: (r.notes ? r.notes + '\n\n' : '') + 'Creado con Reminder 🔔',
       start: { dateTime: localISO(r.due), timeZone: tz },
       end: { dateTime: localISO(r.due + 30 * MIN), timeZone: tz },
-      reminders: r.done ? { useDefault: false, overrides: [] } : { useDefault: false, overrides: [...new Set([r.alert || 0, 1440])].map(m => ({ method: 'popup', minutes: m })) },
+      reminders: r.done ? { useDefault: false, overrides: [] } : { useDefault: false, overrides: [...new Set([r.alert || 0, ...(r.dayBefore !== false ? [1440] : [])])].map(m => ({ method: 'popup', minutes: m })) },
       colorId: GCOLOR[r.cat] || '8',
       extendedProperties: { private: { reminderId: r.id } },
       transparency: 'transparent',
