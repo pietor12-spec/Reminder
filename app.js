@@ -71,6 +71,8 @@ const REPEAT_LABEL = { none: '', daily: 'Cada día', weekdays: 'Laborables', wee
 const TABS = { home: 'Inicio', calendar: 'Calendario', done: 'Recordatorios', settings: 'Ajustes' };
 const PROVIDERS = { google: 'Google Calendar', apple: 'Apple / iCal (.ics)', outlook: 'Outlook' };
 
+const PIN = '<svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>';
+const mapsUrl = p => 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(p);
 const ICON = {
   check: '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
   clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
@@ -424,6 +426,7 @@ function renderAlarm() {
     <span class="app-icon big ringing"><svg><use href="#bell"/></svg></span>
     <div class="alarm-when${late ? ' late' : ''}">${dayFull(d)} · ${fmtTime(d)}${late ? ` <small>${relLabel(r.due)}</small>` : ''}</div>
     <h3>${esc(r.title)}</h3>
+    ${r.place ? `<a class="alarm-place" href="${mapsUrl(r.place)}" target="_blank" rel="noopener">${PIN}${esc(r.place)}</a>` : ''}
     ${r.notes ? `<p class="alarm-notes">${esc(r.notes)}</p>` : ''}
     <button class="btn primary alarm-done" data-al="done">${ICON.check} Hecho</button>
     <div class="alarm-later-t">Avísame en</div>
@@ -457,7 +460,7 @@ function showTomorrow() {
       <div><small>Mañana, ${t1.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</small>
       <h3>Tienes ${list.length === 1 ? 'esto' : list.length + ' cosas'}</h3></div></div>
     <div class="tm-list">${list.map((o, i) => `<div class="tm-item" style="--cat:${catColor(o.r.cat)};animation-delay:${.08 * i + .1}s">
-      <span class="tm-time">${fmtTime(new Date(o.at))}</span><span class="tm-title">${esc(o.r.title)}</span></div>`).join('')}</div>
+      <span class="tm-time">${fmtTime(new Date(o.at))}</span><span class="tm-title">${esc(o.r.title)}${o.r.place ? `<small class="tm-place">${PIN}${esc(o.r.place)}</small>` : ''}</span></div>`).join('')}</div>
     <button class="btn primary tm-ok" data-tm="ok">Entendido</button>
   </div>`;
   box.classList.add('show'); chime(); vibrate([60, 40, 60]);
@@ -487,7 +490,7 @@ function fire(r) {
   r.snoozeUntil = Date.now() + 10 * MIN;
   showAlarm(r);
   if (state.settings.notify && 'Notification' in window && Notification.permission === 'granted') {
-    const opts = { body: when + (r.notes ? '\n' + r.notes : ''), icon: 'icons/icon-192.png', badge: 'icons/favicon-32.png', tag: r.id, data: { id: r.id }, renotify: true,
+    const opts = { body: when + (r.place ? ' · 📍 ' + r.place : '') + (r.notes ? '\n' + r.notes : ''), icon: 'icons/icon-192.png', badge: 'icons/favicon-32.png', tag: r.id, data: { id: r.id }, renotify: true,
       actions: [{ action: 'done', title: 'Hecho' }, { action: 'snooze', title: 'Avísame en 10 min' }] };
     if (navigator.serviceWorker && navigator.serviceWorker.controller) navigator.serviceWorker.ready.then(reg => reg.showNotification(r.title, opts)).catch(() => { });
     else try { new Notification(r.title, opts); } catch (e) { }
@@ -658,7 +661,7 @@ function tlItem(r, at, late) {
   return `<div class="item-wrap" data-id="${r.id}">
     <div class="swipe-bg done"><span>✓ Hecho</span></div>
     <div class="item tl-item${r.done ? ' is-done' : ''}" style="--cat:${r.done ? 'var(--faint)' : late ? 'var(--overdue)' : catColor(r.cat)}">
-      <div class="body" data-act="edit"><div class="title">${esc(r.title)}</div></div>
+      <div class="body" data-act="edit"><div class="title">${esc(r.title)}</div>${r.place ? `<div class="tl-place">${PIN}${esc(r.place)}</div>` : ''}</div>
       <span class="tl-time">${when}</span>
     </div></div>`;
 }
@@ -696,7 +699,7 @@ function renderHome() {
     hero = `<div class="hero hero2" data-id="${next.id}" data-act="edit">
       <div class="cal-leaf"><i>${nd.toLocaleDateString('es-ES', { weekday: 'short' }).replace('.', '').toUpperCase()}</i><b>${nd.getDate()}</b><small>${nd.toLocaleDateString('es-ES', { month: 'long' })}</small></div>
       <div class="hero-info">
-        <div class="hero-title">${esc(next.title)}</div>
+        <div class="hero-title">${esc(next.title)}</div>${next.place ? `<div class="hero-place">${PIN}${esc(next.place)}</div>` : ''}
         <div class="hero-time">${fmtTime(nd)}${next.repeat && next.repeat !== 'none' ? `<small>${REPEAT_LABEL[next.repeat]}</small>` : ''}</div>
         <div class="hero-left"><span>Faltan <b id="heroCount">${countdown(next.due)}</b></span><span class="hero-bar"><i id="heroBar" style="width:${heroProgress(next)}%"></i></span></div>
       </div>
@@ -1278,7 +1281,7 @@ $('#saveBox').addEventListener('click', async e => {
 
 /* ---------- Hoja: crear / editar ---------- */
 const sheet = $('#sheet'), sheetScrim = $('#sheetScrim');
-const f = { title: $('#fTitle'), notes: $('#fNotes'), date: $('#fDate'), time: $('#fTime'), repeat: $('#fRepeat'), alert: $('#fAlert'), cal: $('#fCal'), dayBefore: $('#fDayBefore') };
+const f = { title: $('#fTitle'), notes: $('#fNotes'), date: $('#fDate'), time: $('#fTime'), repeat: $('#fRepeat'), alert: $('#fAlert'), cal: $('#fCal'), dayBefore: $('#fDayBefore'), place: $('#fPlace') };
 let editing = null, cat = 'personal', manual = {}, lastParse = null;
 
 $('#catPicker').innerHTML = CATS.map(c => `<button type="button" data-cat="${c.id}" style="--c:${catColor(c.id)}"><i></i>${c.name}</button>`).join('');
@@ -1361,7 +1364,7 @@ function openSheet({ id, date, text } = {}) {
   $('#calProviderHint').textContent = cloud.connected() ? 'Google Calendar · se crea solo, con aviso' : PROVIDERS[state.settings.calProvider];
   if (editing) {
     const d = new Date(editing.due);
-    f.title.value = editing.title; f.notes.value = editing.notes || '';
+    f.title.value = editing.title; f.notes.value = editing.notes || ''; f.place.value = editing.place || '';
     f.date.value = ymd(d); f.time.value = hm(d);
     f.repeat.value = editing.repeat || 'none'; f.alert.value = String(editing.alert || 0);
     f.cal.checked = !!(editing.wantCal || editing.calEventId);
@@ -1373,7 +1376,7 @@ function openSheet({ id, date, text } = {}) {
     // No se inventa nada: el día y la hora los dices tú (o los eliges)
     f.date.value = date ? ymd(startOfDay(date)) : ''; f.time.value = '';
     if (date) manual.date = true;
-    f.title.value = text || ''; f.notes.value = '';
+    f.title.value = text || ''; f.notes.value = ''; f.place.value = '';
     f.repeat.value = 'none'; f.alert.value = '0';
     f.cal.checked = !!state.settings.autoCal;
     f.dayBefore.checked = true;
@@ -1457,7 +1460,7 @@ sheet.addEventListener('submit', e => {
   if (missingFields().length) { updateReady(); toast('Falta ' + missingFields().join(' y ')); return; }
   const due = +fromParts(f.date.value, f.time.value);
   const data = {
-    title, notes: f.notes.value.trim(), due,
+    title, notes: f.notes.value.trim(), place: f.place.value.trim(), due,
     repeat: f.repeat.value, alert: +f.alert.value, cat, priority: false, dayBefore: f.dayBefore.checked,
     anchorDay: new Date(due).getDate(),
   };
@@ -1632,7 +1635,7 @@ const cloud = (() => {
 
   /* --- Calendar: un evento por recordatorio, con su id fijo para no duplicar --- */
   const evId = id => 'rmd' + [...id].map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join('');
-  const calSig = r => JSON.stringify(['v3', r.dayBefore !== false, r.title, r.notes || '', r.repeat || 'none', r.alert || 0, r.cat, !!r.done,
+  const calSig = r => JSON.stringify(['v3', r.dayBefore !== false, r.place || '', r.title, r.notes || '', r.repeat || 'none', r.alert || 0, r.cat, !!r.done,
     (r.repeat && r.repeat !== 'none') ? hm(new Date(r.due)) + '|' + r.anchorDay : r.due]);
   function localISO(ms) { const d = new Date(ms); return `${ymd(d)}T${hm(d)}:00`; }
   function eventBody(r) {
@@ -1640,6 +1643,7 @@ const cloud = (() => {
     const ev = {
       status: 'confirmed',
       summary: (r.done ? '✓ ' : '') + r.title,
+      location: r.place || '',
       description: (r.notes ? r.notes + '\n\n' : '') + 'Creado con Reminder 🔔',
       start: { dateTime: localISO(r.due), timeZone: tz },
       end: { dateTime: localISO(r.due + 30 * MIN), timeZone: tz },
