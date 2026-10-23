@@ -686,7 +686,7 @@ function bigCalHTML() {
   for (let i = 0; i < 42; i++) {
     const d = addDays(gridStart, i), k = ymd(d), occ = map.get(k) || [];
     const shown = occ;
-    cells += `<div class="bc-cell${d.getMonth() !== mo ? ' other' : ''}${sameDay(d, today) ? ' today' : ''}${sameDay(d, calSel) && homeFilter === 'day' ? ' sel' : ''}" data-day="${k}">
+    cells += `<div class="bc-cell${d.getMonth() !== mo ? ' other' : ''}${sameDay(d, today) ? ' today' : ''}${sameDay(d, calSel) && homeFilter === 'day' ? ' sel' : ''}" data-day="${k}"${occ.length ? ` style="--sc:${catColor((occ.find(o => !o.r.done) || occ[0]).r.cat)}"` : ''}>
       <span class="bc-num">${d.getDate() === 1 ? d.toLocaleDateString('es-ES', { month: 'short' }).replace('.', '') + ' ' : ''}${d.getDate()}</span>
       <div class="bc-evs">${shown.map(o => `<button class="bc-ev${o.r.done ? ' done' : ''}" data-id="${o.r.id}" data-act="edit" style="--cat:${o.r.done ? 'var(--faint)' : catColor(o.r.cat)}" title="${esc(o.r.title)}${o.r.place ? ' · ' + esc(o.r.place) : ''}"><b>${fmtTime(new Date(o.at))}</b><span class="bc-t">${esc(o.r.title)}</span></button>`).join('')}<span class="bc-more" hidden></span></div>
     </div>`;

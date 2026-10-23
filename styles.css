@@ -960,3 +960,12 @@ button.stat:active { transform: scale(.97); }
 }
 @media (min-width: 900px) { body:has(#view-home:not([hidden])) main { max-width: none; } }
 @media (min-width: 1700px) { .home-layout { grid-template-columns: 400px 1fr; gap: 36px; } }
+
+/* Hoy: todo el cuadrado iluminado · Día marcado: color del aviso */
+@media (min-width: 900px) {
+  .bc-cell.today { background: color-mix(in srgb, var(--brand-2) 13%, var(--surface)); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--brand-2) 45%, transparent); }
+  .bc-cell.today:hover { background: color-mix(in srgb, var(--brand-2) 18%, var(--surface)); }
+  .bc-cell.sel { background: color-mix(in srgb, var(--sc, var(--brand-2)) 16%, var(--surface)); box-shadow: inset 0 0 0 2px var(--sc, var(--brand-2)); }
+  .bc-cell.sel .bc-num { color: var(--sc, var(--brand-2)); }
+  .bc-cell.today.sel .bc-num { color: #fff; }
+}
