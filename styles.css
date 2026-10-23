@@ -986,3 +986,19 @@ button.stat:active { transform: scale(.97); }
 .day.today .num b { font-weight: 900; font-size: 1.22em; letter-spacing: -.01em; }
 .day.today .num b::after { content: ""; position: absolute; left: 50%; bottom: -3px; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--brand-2); }
 @media (min-width: 900px) { .bc-cell.today .bc-num { font-size: 18px !important; font-weight: 900 !important; } }
+
+/* Campanita que suena: pendiente hoy */
+@keyframes bellring { 0%, 52%, 100% { transform: rotate(0); } 4% { transform: rotate(16deg); } 10% { transform: rotate(-14deg); } 16% { transform: rotate(11deg); } 22% { transform: rotate(-8deg); } 28% { transform: rotate(5deg); } 34% { transform: rotate(-3deg); } 40% { transform: rotate(1deg); } }
+@keyframes bellwave { 0% { opacity: .55; transform: scale(.7); } 70%, 100% { opacity: 0; transform: scale(1.5); } }
+.hero-time { display: flex; align-items: center; }
+.ring-bell { position: relative; display: inline-grid; place-items: center; flex: none; margin-left: auto; margin-right: 6px; width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,.2); }
+.ring-bell svg { width: 26px; height: 26px; fill: #fff; transform-origin: 50% 18%; animation: bellring 2.4s ease-in-out infinite; filter: drop-shadow(0 2px 4px rgba(0,0,0,.18)); }
+.ring-bell::before { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid rgba(255,255,255,.7); animation: bellwave 2.4s ease-out infinite; }
+.ring-bell.sm { width: 26px; height: 26px; margin: 0 10px 0 auto; background: color-mix(in srgb, var(--cat) 16%, transparent); }
+.ring-bell.sm svg { width: 15px; height: 15px; fill: var(--cat); filter: none; }
+.ring-bell.sm::before { border-color: var(--cat); border-width: 1.5px; }
+.item-wrap.is-today .tl-item { border-color: color-mix(in srgb, var(--cat) 60%, transparent) !important; box-shadow: 0 0 0 1px color-mix(in srgb, var(--cat) 35%, transparent), 0 6px 18px color-mix(in srgb, var(--cat) 18%, transparent); background: color-mix(in srgb, var(--cat) 7%, var(--surface)); }
+@media (prefers-reduced-motion: reduce) { .ring-bell svg, .ring-bell::before { animation: none; } }
+.ring-bell svg { width: 30px !important; height: 30px !important; }
+.ring-bell.sm svg { width: 19px !important; height: 19px !important; }
+.ring-bell.sm { width: 30px; height: 30px; }

@@ -736,11 +736,12 @@ function calCardHTML() {
 function tlItem(r, at, late) {
   const d = new Date(at);
   const when = late && !sameDay(d, new Date()) ? `${dayLabel(d)} ${fmtTime(d)}` : fmtTime(d);
-  return `<div class="item-wrap" data-id="${r.id}">
+  const isToday = !r.done && !late && sameDay(d, new Date());
+  return `<div class="item-wrap${isToday ? ' is-today' : ''}" data-id="${r.id}">
     <div class="swipe-bg done"><span>✓ Hecho</span></div>
     <div class="item tl-item${r.done ? ' is-done' : ''}" style="--cat:${r.done ? 'var(--faint)' : late ? 'var(--overdue)' : catColor(r.cat)}">
       <div class="body" data-act="edit"><div class="title">${esc(r.title)}</div>${r.place ? `<div class="tl-place">${PIN}${esc(r.place)}</div>` : ''}</div>
-      <span class="tl-time">${when}</span>
+      ${isToday ? `<span class="ring-bell sm" title="Pendiente hoy"><svg viewBox="0 0 512 512"><use href="#bell"/></svg></span>` : ''}<span class="tl-time">${when}</span>
     </div></div>`;
 }
 // Lo que ya ha pasado desde que creaste el recordatorio (o desde la repetición anterior)
@@ -778,7 +779,7 @@ function renderHome() {
       <div class="cal-leaf"><i>${nd.toLocaleDateString('es-ES', { weekday: 'short' }).replace('.', '').toUpperCase()}</i><b>${nd.getDate()}</b><small>${nd.toLocaleDateString('es-ES', { month: 'long' })}</small></div>
       <div class="hero-info">
         <div class="hero-title">${esc(next.title)}</div>${next.place ? `<div class="hero-place">${PIN}${esc(next.place)}</div>` : ''}
-        <div class="hero-time">${fmtTime(nd)}${next.repeat && next.repeat !== 'none' ? `<small>${REPEAT_LABEL[next.repeat]}</small>` : ''}</div>
+        <div class="hero-time">${fmtTime(nd)}${next.repeat && next.repeat !== 'none' ? `<small>${REPEAT_LABEL[next.repeat]}</small>` : ''}${sameDay(nd, new Date()) ? `<span class="ring-bell" title="Pendiente hoy"><svg viewBox="0 0 512 512"><use href="#bell"/></svg></span>` : ''}</div>
         <div class="hero-left"><span>Faltan <b id="heroCount">${countdown(next.due)}</b></span><span class="hero-bar"><i id="heroBar" style="width:${heroProgress(next)}%"></i></span></div>
       </div>
     </div>`;
