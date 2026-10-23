@@ -866,3 +866,22 @@ button.stat:active { transform: scale(.97); }
   .home-main.scroll { padding-bottom: 6px !important; }
 }
 .cal-list { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+/* Cabecera de Inicio: «Hoy, viernes 23 de octubre» centrada */
+#view-home .greet.today-head { text-align: center; justify-content: center; margin: 4px 0 20px; }
+#view-home .greet.today-head h1 { font-size: 26px; }
+/* Tarjeta principal ligeramente más grande */
+#view-home .hero.hero2 { min-height: 196px; padding: 24px 22px; }
+.cal-leaf { width: 94px; } .cal-leaf b { font-size: 44px; }
+#view-home .hero .hero-time, .hero-time { font-size: 38px; }
+.hero-title { font-size: 22px; }
+@media (max-width: 899px) {
+  #view-home .greet.today-head h1 { font-size: 24px; }
+  #view-home .hero.hero2 { min-height: 172px; padding: 20px 20px; }
+  .cal-leaf { width: 86px; } .cal-leaf b { font-size: 40px; }
+  #view-home .hero .hero-time { font-size: 34px; }
+}
+@media (min-width: 900px) and (max-height: 780px) {
+  #view-home .greet.today-head { margin-bottom: 10px; }
+  #view-home .hero.hero2 { min-height: 0; padding: 16px 20px; }
+}

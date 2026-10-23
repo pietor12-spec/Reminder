@@ -744,7 +744,7 @@ function renderHome() {
 
   v.innerHTML = `<div class="home-layout">
     <div class="home-side">
-      <div class="greet"><h1>${fmtLong(new Date())}</h1></div>
+      <div class="greet today-head"><h1>Hoy, ${fmtLong(new Date()).replace(/^./, c => c.toLowerCase()).replace(",", "")}</h1></div>
       ${hero}
       <div class="stats">
         <button class="stat${homeFilter === 'next' ? ' on' : ''}" data-hf="next"><b>${overdue.length + upcoming.filter(r => r.due < now + 7 * DAY).length}</b><span>Lo próximo</span></button>
