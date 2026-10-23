@@ -161,10 +161,45 @@ const DAYW = { uno: 1, primero: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6
 const NUMW = { un: 1, una: 1, uno: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10, quince: 15, veinte: 20, treinta: 30, cuarenta: 40, cincuenta: 50 };
 const wdIndex = w => WD.indexOf(w.replace(/^(sabado|domingo)s$/, '$1'));
 
-const HOURW = { una: 1, uno: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10, once: 11, doce: 12 };
+const HOURW = { una: 1, uno: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10, once: 11, doce: 12,
+  trece: 13, catorce: 14, quince: 15, dieciseis: 16, diecisiete: 17, dieciocho: 18, diecinueve: 19, veinte: 20, veintiuna: 21, veintiuno: 21, veintidos: 22, veintitres: 23, cero: 0 };
+const MINW = { cinco: 5, diez: 10, cuarto: 15, quince: 15, veinte: 20, veinticinco: 25, media: 30, treinta: 30, 'treinta y cinco': 35, cuarenta: 40, 'cuarenta y cinco': 45, cincuenta: 50, 'cincuenta y cinco': 55 };
+const HW_RE = Object.keys(HOURW).sort((x, y) => y.length - x.length).join('|');
+const MW_RE = Object.keys(MINW).sort((x, y) => y.length - x.length).join('|');
+// Deja el dictado «hablado» listo para entenderlo: números en letra, horas sueltas, muletillas…
+function normalizeSpeech(s) {
+  s = ' ' + s.normalize('NFC') + ' ';
+  const D = x => x.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  // muletillas al principio
+  s = s.replace(/^\s*(?:oye|vale|bueno|eh+|a ver|venga)[,\s]+/i, ' ');
+  for (let k = 0; k < 3; k++) s = s.replace(/^\s*(?:por favor\s+|que\s+|de\s+)?(?:recu[eé]rdame(?:\s+que)?|recordarme(?:\s+que)?|acu[eé]rdate\s+de|ac[uú]erdame\s+de|av[ií]same(?:\s+(?:de|para|que))?|ap[uú]ntame|apunta(?:\s+que)?|anota(?:\s+que)?|pon(?:me)?\s+(?:un\s+)?(?:recordatorio|aviso|alarma)(?:\s+(?:de|para|que))?|crea(?:r)?\s+(?:un\s+)?recordatorio(?:\s+(?:de|para))?|nuevo\s+recordatorio(?:\s+(?:de|para))?|tengo\s+que|que\s+tengo|tengo|hay\s+que|necesito|que)\s+/i, ' ');
+  s = s.replace(/\s+por favor\s*$/i, ' ');
+  // «en punto», «más o menos», «sobre las»
+  s = s.replace(/\s+en punto\b/gi, '').replace(/\b(?:m[aá]s o menos|aproximadamente)\s+/gi, '');
+  // horas en letra tras «la/las»: «a las diez» → «a las 10»
+  s = s.replace(new RegExp(`\\b(las?)\\s+(${HW_RE})\\b`, 'gi'), (m, art, w) => art + ' ' + HOURW[D(w)]);
+  // «10 y media», «10 y cuarto», «10 y veinte» → 10:30…
+  s = s.replace(new RegExp(`\\b(\\d{1,2})\\s+y\\s+(${MW_RE})\\b`, 'gi'), (m, h, w) => `${h}:${String(MINW[D(w)]).padStart(2, '0')}`);
+  s = s.replace(/\b(\d{1,2})\s+y\s+(\d{1,2})\b(?!\s*(?:de|\/))/gi, (m, h, mm) => +mm < 60 && +h < 24 ? `${h}:${mm.padStart(2, '0')}` : m);
+  // «10 menos cuarto» → 9:45
+  s = s.replace(new RegExp(`\\b(\\d{1,2})\\s+menos\\s+(${MW_RE})\\b`, 'gi'), (m, h, w) => { const mm = 60 - MINW[D(w)]; return `${(+h + 23) % 24}:${String(mm).padStart(2, '0')}`; });
+  // «a las 10 30» / «a las 10.30» / «a las 1030» → 10:30
+  s = s.replace(/\b(las?)\s+(\d{1,2})[\s.](\d{2})\b/gi, (m, art, h, mm) => +mm < 60 ? `${art} ${h}:${mm}` : m);
+  s = s.replace(/\b(las?)\s+(\d{1,2})(\d{2})\b/gi, (m, art, h, mm) => +h < 24 && +mm < 60 ? `${art} ${h}:${mm}` : m);
+  // «a las 10 horas», «10 h» → «a las 10»
+  s = s.replace(/\b(\d{1,2}(?::\d{2})?)\s*(?:horas|hrs|h)\b/gi, '$1');
+  // «10 de la mañana» sin «a las»: «dentista mañana 10 de la mañana»
+  s = s.replace(/(^|\s)(?<!las?\s)(\d{1,2}(?::\d{2})?)\s+(de la (?:mañana|manana|tarde|noche|madrugada)|del mediod[ií]a)/gi, (m, sp, t, q, off, str) => /\blas?\s*$/i.test(str.slice(0, off + sp.length)) ? m : `${sp}a las ${t} ${q}`);
+  // días en letra: «el veintitrés de noviembre»
+  s = s.replace(/(?<![\wáéíóú])(veinti(?:uno|ún|un|d[oó]s|tr[eé]s|cuatro|cinco|s[eé]is|siete|ocho|nueve)|treinta y uno|treinta|primero)(?![\wáéíóú])(?=\s+(?:de\s+)?[a-záéíóú])/gi, w => ({ veintiuno: 21, veintiun: 21, veintidos: 22, veintitres: 23, veinticuatro: 24, veinticinco: 25, veintiseis: 26, veintisiete: 27, veintiocho: 28, veintinueve: 29, 'treinta y uno': 31, treinta: 30, primero: 1 })[D(w)] ?? w);
+  // «el día 3», «día 3» → «el 3»
+  s = s.replace(/\b(?:el\s+)?d[ií]a\s+(\d{1,2})\b/gi, 'el $1');
+  // signos que mete el dictado
+  s = s.replace(/[¿?¡!]/g, ' ').replace(/\.\s*$/, '').replace(/\s+/g, ' ');
+  return s.trim();
+}
 function parseNL(input, now = new Date()) {
-  // Dictado: «a las diez y media» → «a las 10 y media»
-  input = input.replace(/\b(las?)\s+(una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)\b/gi, (m, art, w) => art + ' ' + HOURW[w.toLowerCase()]);
+  input = normalizeSpeech(input);
   let orig = ' ' + input.normalize('NFC') + ' ';
   let low = deacc(orig);
   const res = { date: null, time: null, repeat: null, chips: [] };
@@ -279,11 +314,11 @@ function parseNL(input, now = new Date()) {
 
   // Limpieza del título
   let title = orig.replace(/\s+/g, ' ').trim();
-  const STOP = /^(?:y|el|la|los|las|a|al|de|del|para|en|que|desde|sobre|hacia|por|,|-|—)$/i;
+  const STOP = /^(?:y|el|la|los|las|a|al|de|del|para|en|que|desde|sobre|hacia|por|este|esta|próximo|proximo|,|\.|-|—)$/i;
   let words = title.split(' ');
   while (words.length && STOP.test(words[words.length - 1])) words.pop();
   while (words.length > 1 && /^(?:y|,|-|—)$/i.test(words[0])) words.shift();
-  title = words.join(' ').replace(/\s+([,.;:])/g, '$1').replace(/[,;:\-—]+$/, '').trim();
+  title = words.join(' ').replace(/\s+([,.;:])/g, '$1').replace(/[,;:.\-—]+$/, '').replace(/^[,;:.\-—\s]+/, '').replace(/,\s*,/g, ',').trim();
   res.title = title ? title[0].toUpperCase() + title.slice(1) : '';
 
   if (res.date) res.chips.push(ICON.cal + dayLabel(res.date, now));
@@ -1410,11 +1445,20 @@ $('#micBtn').addEventListener('click', () => {
   if (!SR) return;
   if (rec) { stopMic(); return; }
   rec = new SR();
-  rec.lang = 'es-ES'; rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
+  rec.lang = 'es-ES'; rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 4;
   recBase = f.title.value.trim();
+  const score = t => { const p = parseNL((recBase ? recBase + ' ' : '') + t); return (p.date ? 2 : 0) + (p.time ? 2 : 0) + (p.title ? 1 : 0) + (p.repeat ? .5 : 0); };
   rec.onresult = e => {
     let txt = '';
-    for (let i = 0; i < e.results.length; i++) txt += e.results[i][0].transcript;
+    for (let i = 0; i < e.results.length; i++) {
+      const res = e.results[i];
+      let best = res[0].transcript;
+      if (res.isFinal && res.length > 1) {
+        let bs = score(best);
+        for (let k = 1; k < res.length; k++) { const s = score(res[k].transcript); if (s > bs) { bs = s; best = res[k].transcript; } }
+      }
+      txt += (txt ? ' ' : '') + best.trim();
+    }
     txt = txt.trim();
     f.title.value = (recBase ? recBase + ' ' : '') + (txt ? txt[0].toUpperCase() + txt.slice(1) : '');
     onTitleInput();
