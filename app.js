@@ -153,6 +153,11 @@ function occurrencesBetween(r, start, end) {
 const deacc = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 const WD = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
 const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+// Meses con abreviaturas («3 nov», «3 de noviembre», «noviembre 3»)
+const MON_ABBR = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sept?', 'oct', 'nov', 'dic'];
+const MON_RE = MONTHS.join('|') + '|' + MON_ABBR.join('|');
+const MON_IDX = s => { s = s.replace('.', ''); const i = MONTHS.indexOf(s); return i >= 0 ? i : MON_ABBR.findIndex(p => new RegExp('^' + p + '$').test(s)); };
+const DAYW = { uno: 1, primero: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10, once: 11, doce: 12, trece: 13, catorce: 14, quince: 15, dieciseis: 16, diecisiete: 17, dieciocho: 18, diecinueve: 19, veinte: 20, treinta: 30 };
 const NUMW = { un: 1, una: 1, uno: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10, quince: 15, veinte: 20, treinta: 30, cuarenta: 40, cincuenta: 50 };
 const wdIndex = w => WD.indexOf(w.replace(/^(sabado|domingo)s$/, '$1'));
 
@@ -240,8 +245,12 @@ function parseNL(input, now = new Date()) {
     else if (take(/\b(?:el |este )?fin(?:de)? de semana\b|\beste finde\b|\bel finde\b/)) res.date = nextWeekday(6);
     else if (take(/\b(?:la )?(?:proxima semana|semana que viene)\b/)) res.date = nextWeekday(1, true);
     else if ((m = take(new RegExp(`\\b(?:el |este |el proximo |proximo |la proxima semana el )?${W}(?: que viene| proximo)?\\b`)))) res.date = nextWeekday(wdIndex(m[1]));
-    else if ((m = take(new RegExp(`\\b(?:el )?(?:dia )?(\\d{1,2}) de (${MONTHS.join('|')})(?: de (\\d{4}))?\\b`)))) {
-      const y = m[3] ? +m[3] : now.getFullYear(); let d = new Date(y, MONTHS.indexOf(m[2]), +m[1]);
+    else if ((m = take(new RegExp(`\\b(?:el )?(?:dia )?(\\d{1,2}|${Object.keys(DAYW).join('|')})(?: de)? (${MON_RE})\\.?(?: (?:de|del) (\\d{4}))?\\b`))) ||
+             (m = take(new RegExp(`\\b(${MON_RE})\\.? (?:el )?(?:dia )?(\\d{1,2})()\\b`)))) {
+      let day = m[1], mon = m[2];
+      if (/^\D/.test(m[1]) && MON_IDX(m[1]) >= 0) { mon = m[1]; day = m[2]; }
+      day = DAYW[day] ?? +day;
+      const y = m[3] ? +m[3] : now.getFullYear(); let d = new Date(y, MON_IDX(mon), day);
       if (!m[3] && d < startOfDay(now)) d.setFullYear(y + 1);
       res.date = d;
     }
