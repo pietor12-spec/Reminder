@@ -977,3 +977,8 @@ button.stat:active { transform: scale(.97); }
   .bc-cell.sel .bc-num { color: var(--sc, var(--brand-2)); }
   .bc-cell.sel:hover::before { opacity: .22; }
 }
+/* Móvil: hoy sin círculo, solo el número en naranja (como en web) */
+.day.today .num, .day.today.sel .num { background: none; box-shadow: none; color: var(--brand-2); }
+.day.today .num b { font-weight: 800; }
+.day.today.has .num { background: var(--ring); }
+.day.today.has .num::before, .day.today.sel.has .num::before { inset: 2.5px; background: var(--surface); }
