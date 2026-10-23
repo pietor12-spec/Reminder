@@ -964,15 +964,16 @@ button.stat:active { transform: scale(.97); }
 /* Hoy y día marcado: mismo estilo, casilla entera iluminada con borde completo (colores del aviso combinados) */
 @media (min-width: 900px) {
   .bc-cell.today, .bc-cell.sel { background: none; box-shadow: none; }
-  .bc-cell.today::before, .bc-cell.sel::before, .bc-cell.today::after, .bc-cell.sel::after { content: ""; position: absolute; inset: 2px; border-radius: 9px; pointer-events: none; }
-  .bc-cell.today::before, .bc-cell.sel::before { background: var(--g); opacity: .16; z-index: 0; }
-  .bc-cell.today::after, .bc-cell.sel::after { padding: 2px; background: var(--g);
+  .bc-cell.today:not(.sel) { box-shadow: inset 0 3px 0 var(--brand-2); }
+  .bc-cell.today .bc-num { background: none !important; color: var(--brand-2) !important; font-size: 15px; font-weight: 800; }
+  .bc-cell.sel::before, .bc-cell.sel::after { content: ""; position: absolute; inset: 2px; border-radius: 9px; pointer-events: none; }
+  .bc-cell.sel::before { background: var(--g); opacity: .16; z-index: 0; }
+  .bc-cell.sel::after { padding: 2px; background: var(--g);
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
     mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); z-index: 2; }
   .bc-cell.today { --g: linear-gradient(135deg, var(--brand-1), var(--brand-2)); }
   .bc-cell.sel { --g: var(--sg, linear-gradient(135deg, var(--brand-1), var(--brand-2))); }
   .bc-cell > * { position: relative; z-index: 1; }
   .bc-cell.sel .bc-num { color: var(--sc, var(--brand-2)); }
-  .bc-cell.today .bc-num { color: #fff; }
-  .bc-cell.today:hover::before, .bc-cell.sel:hover::before { opacity: .22; }
+  .bc-cell.sel:hover::before { opacity: .22; }
 }

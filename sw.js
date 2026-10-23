@@ -1,6 +1,6 @@
 /* Reminder — service worker: funciona sin conexión y gestiona las notificaciones */
-const CACHE = 'reminder-v54';
-const SHELL = ['./', 'index.html', 'styles.css?v=54', 'app.js?v=54', 'manifest.webmanifest',
+const CACHE = 'reminder-v55';
+const SHELL = ['./', 'index.html', 'styles.css?v=55', 'app.js?v=55', 'manifest.webmanifest',
   'icons/logo.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/apple-touch-icon.png', 'icons/favicon-32.png'];
 
 self.addEventListener('install', e => {
