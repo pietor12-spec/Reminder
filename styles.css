@@ -982,3 +982,7 @@ button.stat:active { transform: scale(.97); }
 .day.today .num b { font-weight: 800; }
 .day.today.has .num { background: var(--ring); }
 .day.today.has .num::before, .day.today.sel.has .num::before { inset: 2.5px; background: var(--surface); }
+/* Hoy: número más remarcado */
+.day.today .num b { font-weight: 900; font-size: 1.22em; letter-spacing: -.01em; }
+.day.today .num b::after { content: ""; position: absolute; left: 50%; bottom: -3px; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--brand-2); }
+@media (min-width: 900px) { .bc-cell.today .bc-num { font-size: 18px !important; font-weight: 900 !important; } }
