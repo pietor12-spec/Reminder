@@ -562,12 +562,15 @@ function setTab(t, { push = true } = {}) {
   const v = $('#view-' + t); v.classList.remove('enter'); void v.offsetWidth; v.classList.add('enter');
   $('#tabLabel').textContent = TABS[t];
   $$('#bellMenu button').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
-  $('#fab').hidden = t === 'settings';
+  $('#fab').style.visibility = t === 'settings' ? 'hidden' : '';
+  $('#gearBtn').classList.toggle('on', t === 'settings'); $('#calBtn').classList.toggle('on', t === 'calendar');
   if (push && location.search) history.replaceState(null, '', location.pathname);
   render();
   window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
 }
-bellBtn.addEventListener('click', () => openMenu());
+bellBtn.addEventListener('click', () => setTab('home'));
+$('#gearBtn').addEventListener('click', () => setTab(tab === 'settings' ? 'home' : 'settings'));
+$('#calBtn').addEventListener('click', () => setTab(tab === 'calendar' ? 'home' : 'calendar'));
 menuScrim.addEventListener('click', () => openMenu(false));
 $$('#bellMenu button').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
 

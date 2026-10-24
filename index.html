@@ -29,7 +29,7 @@
       } catch (e) { document.documentElement.dataset.theme = 'dark'; }
     })();
   </script>
-  <link rel="stylesheet" href="styles.css?v=61">
+  <link rel="stylesheet" href="styles.css?v=62">
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -57,22 +57,24 @@
   </div>
 
   <div id="app" hidden>
-    <header class="topbar">
-      <button id="bellBtn" class="brand" aria-haspopup="true" aria-expanded="false" aria-label="Abrir menú">
-        <span class="app-icon"><svg><use href="#bell"/></svg><i class="badge" id="bellBadge" hidden></i></span>
-        <span class="brand-text">
-          <span class="wordmark small">Reminder</span>
-          <span class="tab-label" id="tabLabel">Inicio</span>
-        </span>
-        <svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
-      </button>
-      <div class="top-actions">
+    <header class="topbar tb3">
+      <div class="tb-side tb-l">
+        <button class="icon-btn tb-btn mobile-only" id="calBtn" aria-label="Calendario" title="Calendario"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></button>
+      </div>
+      <div class="tb-center">
+        <button id="bellBtn" class="brand" aria-label="Inicio" title="Inicio">
+          <span class="app-icon"><svg><use href="#bell"/></svg><i class="badge" id="bellBadge" hidden></i></span>
+          <span class="brand-text"><span class="wordmark small">Reminder</span><span class="tab-label" id="tabLabel" hidden>Inicio</span></span>
+        </button>
+        <button id="fab" aria-label="Nuevo recordatorio"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+      </div>
+      <div class="tb-side tb-r top-actions">
         <button class="icon-btn" id="searchBtn" aria-label="Buscar" hidden><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></button>
-        <button class="icon-btn fs-btn" id="fsBtn" aria-label="Pantalla completa" title="Pantalla completa">
+        <button class="icon-btn tb-btn fs-btn" id="fsBtn" aria-label="Pantalla completa" title="Pantalla completa">
           <svg class="i-max" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
           <svg class="i-min" viewBox="0 0 24 24"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>
         </button>
-        <button id="fab" aria-label="Nuevo recordatorio"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+        <button class="icon-btn tb-btn" id="gearBtn" aria-label="Ajustes" title="Ajustes"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
       </div>
     </header>
 
@@ -194,6 +196,6 @@
   <div id="toasts" aria-live="polite"></div>
   <input type="file" id="importFile" accept="application/json,.json,text/plain,.txt" hidden>
 
-  <script src="app.js?v=61"></script>
+  <script src="app.js?v=62"></script>
 </body>
 </html>
