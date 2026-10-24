@@ -857,9 +857,13 @@ function fitHome() {
     const bc = $('#view-home .home-bigcal');
     if (bc) {
       bc.style.height = '';
-      const bottom = main.getBoundingClientRect().top + (parseFloat(main.style.maxHeight) || main.clientHeight);
+      // Borde inferior del último aviso visible de la lista (no del hueco libre que quede debajo)
+      const mTop = main.getBoundingClientRect().top, mMax = mTop + (parseFloat(main.style.maxHeight) || main.clientHeight);
+      let bottom = 0;
+      for (const w of $$('.item-wrap', main)) { const b = w.getBoundingClientRect().bottom; if (b <= mMax + 1) bottom = Math.max(bottom, b); }
+      if (!bottom) bottom = mMax;
       const h = Math.floor(bottom - bc.getBoundingClientRect().top);
-      if (h > 320) { bc.style.height = h + 'px'; bc.style.paddingBottom = '0'; }
+      bc.style.height = Math.max(h, 440) + 'px'; bc.style.paddingBottom = '0';
     }
     fitBigCal(); return;
   }
