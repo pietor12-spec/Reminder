@@ -1041,3 +1041,10 @@ button.stat:active { transform: scale(.97); }
   .tb3 .tb-center { gap: 18px; }
   .tb3 .brand { gap: 14px; }
 }
+/* Web: título centrado otra vez y con más aire entre letras */
+@media (min-width: 900px) {
+  .topbar.tb3 { grid-template-columns: 1fr auto 1fr; }
+  .tb3 .tb-l { display: flex; }
+  .tb3 .tb-center { grid-column: 2; justify-self: center; }
+  .tb3 .wordmark.small { letter-spacing: .06em; }
+}
