@@ -1013,3 +1013,21 @@ button.stat:active { transform: scale(.97); }
 @media (max-width: 380px) { .tb3 .wordmark.small { font-size: 25px; } }
 @media (min-width: 900px) { #calBtn { display: none !important; } }
 @media (min-width: 900px) { #gearBtn, #fsBtn { width: 42px; height: 42px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); } #gearBtn svg, #fsBtn svg { width: 20px; height: 20px; } }
+/* Web: logo y + a la izquierda; sin la fecha encima del recuadro naranja */
+@media (min-width: 900px) {
+  .topbar.tb3 { grid-template-columns: auto 1fr auto; }
+  .tb3 .tb-l { display: none; }
+  .tb3 .tb-center { grid-column: 1; justify-self: start; }
+  .tb3 .tb-r { grid-column: 3; }
+  #view-home .greet.today-head { display: none; }
+}
+/* Iconos de cabecera sin fondo al estar activos: solo el icono en naranja */
+.tb-btn.on { background: none !important; border-color: transparent !important; box-shadow: none !important; color: var(--brand-2); }
+@media (min-width: 900px) {
+  #gearBtn.on { background: var(--surface) !important; border-color: var(--border) !important; }
+  .topbar.tb3 { grid-template-columns: auto 1fr auto; }
+  .tb3 .tb-l { display: none; }
+  .tb3 .tb-center { grid-column: 1; justify-self: start; }
+  .tb3 .tb-r { grid-column: 3; }
+  #view-home .greet.today-head { display: none; }
+}
