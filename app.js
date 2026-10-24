@@ -555,7 +555,7 @@ function openMenu(open) {
   if (isOpen) { bellRing(); unlockAudio(); }
 }
 function setTab(t, { push = true } = {}) {
-  if (!TABS[t] || (t === 'calendar' && isDesktop())) t = 'home'; // en ordenador el calendario está en Inicio
+  if (!TABS[t] || t === 'done' || (t === 'calendar' && isDesktop())) t = 'home'; // en ordenador el calendario está en Inicio
   if (t === 'calendar' && tab !== 'calendar') { calSel = startOfDay(new Date()); calMonth = new Date(calSel.getFullYear(), calSel.getMonth(), 1); }
   tab = t; openMenu(false);
   $$('.view').forEach(v => { v.hidden = v.id !== 'view-' + t; });
@@ -1082,8 +1082,7 @@ function updateBadges() {
   const urgent = p.filter(r => r.due < tom).length;
   const b = $('#bellBadge');
   b.hidden = !urgent; b.textContent = urgent;
-  $('[data-count="home"]').textContent = p.length || '';
-  $('[data-count="done"]').textContent = state.reminders.filter(r => r.done).length || '';
+  const hc = $('[data-count="home"]'); if (hc) hc.textContent = p.length || '';
   document.title = urgent ? `(${urgent}) Reminder` : 'Reminder';
   try { if ('setAppBadge' in navigator) urgent ? navigator.setAppBadge(urgent) : navigator.clearAppBadge(); } catch (e) { }
   $('#fab').classList.toggle('pulse', !state.reminders.length);
@@ -1597,7 +1596,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { if (sheet.classList.contains('open')) closeSheet(); else if (menu.classList.contains('open')) openMenu(false); else if (!$('#searchBar').hidden) toggleSearch(false); return; }
   if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
   if (e.key === 'n' || e.key === '+') { e.preventDefault(); openSheet(); }
-  else if ('123'.includes(e.key)) setTab(['home', 'done', 'settings'][+e.key - 1]);
+  else if ('12'.includes(e.key)) setTab(['home', 'settings'][+e.key - 1]);
   else if (e.key === '4' && !isDesktop()) setTab('calendar');
 });
 
