@@ -851,7 +851,18 @@ function fitHome() {
   const main = $('#view-home .home-main');
   if (!main || query || $('#app').hidden) return;
   const fabTop = viewH() - 16;
-  if (isDesktop()) { fitList(main); fitBigCal(); return; }
+  if (isDesktop()) {
+    fitList(main);
+    // El calendario termina donde termina la lista de la izquierda
+    const bc = $('#view-home .home-bigcal');
+    if (bc) {
+      bc.style.height = '';
+      const bottom = main.getBoundingClientRect().top + (parseFloat(main.style.maxHeight) || main.clientHeight);
+      const h = Math.floor(bottom - bc.getBoundingClientRect().top);
+      if (h > 320) { bc.style.height = h + 'px'; bc.style.paddingBottom = '0'; }
+    }
+    fitBigCal(); return;
+  }
   fitList(main); return;
   main.style.maxHeight = '';
   const wraps = $$('.item-wrap', main);

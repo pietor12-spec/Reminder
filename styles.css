@@ -1048,3 +1048,4 @@ button.stat:active { transform: scale(.97); }
   .tb3 .tb-center { grid-column: 2; justify-self: center; }
   .tb3 .wordmark.small { letter-spacing: .06em; }
 }
+@media (min-width: 900px) { .home-bigcal { align-self: start; } }
