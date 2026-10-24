@@ -433,7 +433,7 @@ function completeReminder(id) {
     const now = Date.now();
     if (r.repeat && r.repeat !== 'none') {
       state.reminders.push({ ...r, id: uid(), done: true, doneAt: now, repeat: 'none', seriesId: r.id, calEventId: null, calSig: null, wantCal: false, inCal: false });
-      let t = nextOccurrence(r, r.due);
+      let t = nextOccurrence(r, r.baseDue != null ? r.baseDue : r.due); delete r.baseDue;
       while (t != null && t <= now) t = nextOccurrence(r, t);
       r.due = t; r.firedAt = null; r.snoozeUntil = null;
     } else {
@@ -451,7 +451,10 @@ function deleteReminder(id) {
 }
 function snooze(id, minutes = 10) {
   const r = byId(id); if (!r) return;
-  r.snoozeUntil = Date.now() + minutes * MIN; r.firedAt = null; commit();
+  // Pospone el aviso: pasa a la nueva hora en todas partes (tarjeta, lista, calendario)
+  const t = Math.round((Date.now() + minutes * MIN) / MIN) * MIN;
+  if (r.repeat && r.repeat !== 'none' && r.baseDue == null) r.baseDue = r.due; // la serie sigue a su hora original
+  r.due = t; r.snoozeUntil = t; r.firedAt = null; commit();
   toast(`Te aviso ${minutes >= 60 ? 'en ' + minutes / 60 + ' h' : 'en ' + minutes + ' min'}`, r.title);
 }
 
@@ -1569,7 +1572,7 @@ sheet.addEventListener('submit', e => {
     r = editing;
     const changedTime = r.due !== due || r.alert !== data.alert;
     Object.assign(r, data);
-    if (changedTime) { r.firedAt = null; r.snoozeUntil = null; }
+    if (changedTime) { r.firedAt = null; r.snoozeUntil = null; delete r.baseDue; }
     if (cloud.connected()) r.wantCal = f.cal.checked;
     toast('Guardado');
   } else {
@@ -1736,7 +1739,8 @@ const cloud = (() => {
   /* --- Calendar: un evento por recordatorio, con su id fijo para no duplicar --- */
   const evId = id => 'rmd' + [...id].map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join('');
   const calSig = r => JSON.stringify(['v3', r.dayBefore !== false, r.place || '', r.title, r.notes || '', r.repeat || 'none', r.alert || 0, r.cat, !!r.done,
-    (r.repeat && r.repeat !== 'none') ? hm(new Date(r.due)) + '|' + r.anchorDay : r.due]);
+    (r.repeat && r.repeat !== 'none') ? hm(new Date(calDue(r))) + '|' + r.anchorDay : r.due]);
+  function calDue(r) { return r.repeat && r.repeat !== 'none' && r.baseDue != null ? r.baseDue : r.due; }
   function localISO(ms) { const d = new Date(ms); return `${ymd(d)}T${hm(d)}:00`; }
   function eventBody(r) {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Madrid';
@@ -1745,8 +1749,8 @@ const cloud = (() => {
       summary: (r.done ? '✓ ' : '') + r.title,
       location: r.place || '',
       description: (r.notes ? r.notes + '\n\n' : '') + 'Creado con Reminder 🔔',
-      start: { dateTime: localISO(r.due), timeZone: tz },
-      end: { dateTime: localISO(r.due + 30 * MIN), timeZone: tz },
+      start: { dateTime: localISO(calDue(r)), timeZone: tz },
+      end: { dateTime: localISO(calDue(r) + 30 * MIN), timeZone: tz },
       reminders: r.done ? { useDefault: false, overrides: [] } : { useDefault: false, overrides: [...new Set([r.alert || 0, ...(r.dayBefore !== false ? [1440] : [])])].map(m => ({ method: 'popup', minutes: m })) },
       colorId: GCOLOR[r.cat] || '8',
       extendedProperties: { private: { reminderId: r.id } },
