@@ -1031,3 +1031,13 @@ button.stat:active { transform: scale(.97); }
   .tb3 .tb-r { grid-column: 3; }
   #view-home .greet.today-head { display: none; }
 }
+/* Web: título más grande y a juego con el icono y el + */
+@media (min-width: 900px) {
+  .tb3 .wordmark.small { font-size: 46px !important; }
+  .tb3 .app-icon { width: 56px !important; height: 56px !important; border-radius: 17px !important; }
+  .tb3 .app-icon svg { width: 30px !important; height: 30px !important; }
+  .tb3 #fab { width: 48px; height: 48px; border-radius: 14px; }
+  .tb3 #fab svg { width: 26px; height: 26px; }
+  .tb3 .tb-center { gap: 18px; }
+  .tb3 .brand { gap: 14px; }
+}
