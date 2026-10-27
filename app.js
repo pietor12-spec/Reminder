@@ -860,7 +860,7 @@ function fitHome() {
       // Altura fija según la pantalla (no cambia al filtrar o pulsar un día)
       const bottom = viewH() - 16;
       let top = 0; for (let el = bc; el; el = el.offsetParent) top += el.offsetTop; // sin contar animaciones
-      const h = Math.floor(bottom - top);
+      const h = Math.floor((bottom - top) * 0.9); // un poco más pequeño que toda la altura disponible
       bc.style.height = Math.max(h, 420) + 'px'; bc.style.paddingBottom = '0';
     }
     fitBigCal(); return;
