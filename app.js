@@ -1150,7 +1150,8 @@ $('#views').addEventListener('click', e => {
   if (day) {
     const [y, m, d] = day.dataset.day.split('-').map(Number);
     calSel = new Date(y, m - 1, d);
-    if (calSel.getMonth() !== calMonth.getMonth()) calMonth = new Date(y, m - 1, 1);
+    // En la web el mes solo cambia con las flechas; en el móvil (pestaña Calendario) sigue saltando al mes del día
+    if (!isDesktop() && calSel.getMonth() !== calMonth.getMonth()) calMonth = new Date(y, m - 1, 1);
     if (tab === 'home') homeFilter = 'day';
     render(); requestAnimationFrame(scrollToSelDay); return;
   }
