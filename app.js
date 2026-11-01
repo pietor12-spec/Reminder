@@ -73,6 +73,26 @@ const PROVIDERS = { google: 'Google Calendar', apple: 'Apple / iCal (.ics)', out
 
 const PIN = '<svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>';
 const mapsUrl = p => 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(p);
+const dirUrl = p => 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(p);
+/* Mapa: al pulsar una ubicación se abre el mapa dentro de la app, con «Cómo llegar» y «Abrir en Google Maps» */
+function openMap(place) {
+  const box = document.getElementById('mapBox');
+  box.innerHTML = `<div class="map-card">
+    <div class="map-head"><span class="map-pin">${PIN}</span><b>${esc(place)}</b><button class="map-x" data-mapx aria-label="Cerrar">✕</button></div>
+    <div class="map-frame"><iframe loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://maps.google.com/maps?q=${encodeURIComponent(place)}&z=15&hl=es&output=embed" title="Mapa"></iframe></div>
+    <div class="map-actions">
+      <a class="btn primary" href="${dirUrl(place)}" target="_blank" rel="noopener">Cómo llegar</a>
+      <a class="btn ghost" href="${mapsUrl(place)}" target="_blank" rel="noopener">Abrir en Google Maps</a>
+    </div></div>`;
+  box.classList.add('show');
+}
+function closeMap() { const b = document.getElementById('mapBox'); b.classList.remove('show'); setTimeout(() => { if (!b.classList.contains('show')) b.innerHTML = ''; }, 300); }
+document.addEventListener('click', e => {
+  const m = e.target.closest('[data-map]');
+  if (m) { e.preventDefault(); e.stopPropagation(); openMap(m.dataset.map); return; }
+  if (e.target.closest('[data-mapx]') || e.target.id === 'mapBox') closeMap();
+}, true);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.getElementById('mapBox')?.classList.contains('show')) closeMap(); });
 const ICON = {
   check: '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
   clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
@@ -473,7 +493,7 @@ function renderAlarm() {
     <span class="app-icon big ringing"><svg><use href="#bell"/></svg></span>
     <div class="alarm-when${late ? ' late' : ''}">${dayFull(d)} · ${fmtTime(d)}${late ? ` <small>${relLabel(r.due)}</small>` : ''}</div>
     <h3>${esc(r.title)}</h3>
-    ${r.place ? `<a class="alarm-place" href="${mapsUrl(r.place)}" target="_blank" rel="noopener">${PIN}${esc(r.place)}</a>` : ''}
+    ${r.place ? `<button class="alarm-place" data-map="${esc(r.place)}">${PIN}${esc(r.place)}</button>` : ''}
     ${r.notes ? `<p class="alarm-notes">${esc(r.notes)}</p>` : ''}
     <button class="btn primary alarm-done" data-al="done">${ICON.check} Hecho</button>
     <div class="alarm-later-t">Avísame en</div>
@@ -507,7 +527,7 @@ function showTomorrow() {
       <div><small>Mañana, ${t1.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</small>
       <h3>Tienes ${list.length === 1 ? 'esto' : list.length + ' cosas'}</h3></div></div>
     <div class="tm-list">${list.map((o, i) => `<div class="tm-item" style="--cat:${catColor(o.r.cat)};animation-delay:${.08 * i + .1}s">
-      <span class="tm-time">${fmtTime(new Date(o.at))}</span><span class="tm-title">${esc(o.r.title)}${o.r.place ? `<small class="tm-place">${PIN}${esc(o.r.place)}</small>` : ''}</span></div>`).join('')}</div>
+      <span class="tm-time">${fmtTime(new Date(o.at))}</span><span class="tm-title">${esc(o.r.title)}${o.r.place ? `<button class="tm-place" data-map="${esc(o.r.place)}">${PIN}${esc(o.r.place)}</button>` : ''}</span></div>`).join('')}</div>
     <button class="btn primary tm-ok" data-tm="ok">Entendido</button>
   </div>`;
   box.classList.add('show'); chime(); vibrate([60, 40, 60]);
@@ -746,7 +766,7 @@ function tlItem(r, at, late) {
   return `<div class="item-wrap${isToday ? ' is-today' : ''}" data-id="${r.id}">
     <div class="swipe-bg done"><span>✓ Hecho</span></div>
     <div class="item tl-item${r.done ? ' is-done' : ''}" style="--cat:${r.done ? 'var(--faint)' : late ? 'var(--overdue)' : catColor(r.cat)}">
-      <div class="body" data-act="edit"><div class="title">${esc(r.title)}</div>${r.place ? `<div class="tl-place">${PIN}${esc(r.place)}</div>` : ''}</div>
+      <div class="body" data-act="edit"><div class="title">${esc(r.title)}</div>${r.place ? `<button class="tl-place" data-map="${esc(r.place)}" title="Ver en el mapa">${PIN}<span>${esc(r.place)}</span></button>` : ''}</div>
       ${isToday ? `<span class="ring-bell sm" title="Pendiente hoy"><svg viewBox="0 0 512 512"><use href="#bell"/></svg></span>` : ''}<span class="tl-time">${when}</span>
     </div></div>`;
 }
@@ -784,7 +804,7 @@ function renderHome() {
     hero = `<div class="hero hero2" data-id="${next.id}" data-act="edit">
       <div class="cal-leaf"><i>${nd.toLocaleDateString('es-ES', { weekday: 'short' }).replace('.', '').toUpperCase()}</i><b>${nd.getDate()}</b><small>${nd.toLocaleDateString('es-ES', { month: 'long' })}</small></div>
       <div class="hero-info">
-        <div class="hero-title">${esc(next.title)}</div>${next.place ? `<div class="hero-place">${PIN}${esc(next.place)}</div>` : ''}
+        <div class="hero-title">${esc(next.title)}</div>${next.place ? `<button class="hero-place" data-map="${esc(next.place)}" title="Ver en el mapa">${PIN}<span>${esc(next.place)}</span></button>` : ''}
         <div class="hero-time">${fmtTime(nd)}${next.repeat && next.repeat !== 'none' ? `<small>${REPEAT_LABEL[next.repeat]}</small>` : ''}${sameDay(nd, new Date()) ? `<span class="ring-bell" title="Pendiente hoy"><svg viewBox="0 0 512 512"><use href="#bell"/></svg></span>` : ''}</div>
         <div class="hero-left"><span>Faltan <b id="heroCount">${countdown(next.due)}</b></span><span class="hero-bar"><i id="heroBar" style="width:${heroProgress(next)}%"></i></span></div>
       </div>
