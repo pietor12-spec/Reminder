@@ -984,12 +984,16 @@ function renderCalendar() {
 }
 // Ajusta la lista al hueco libre cortando justo después del último recordatorio que cabe entero
 function fitBigCal() {
-  // En cada día solo se ven citas completas; las que no caben pasan a «+N más»
+  // Se ven todas las citas del día: si no caben, se compactan (texto y huecos más pequeños) hasta que quepan.
+  // Solo si ni así caben, las últimas pasan a «+N más».
   for (const box of $$('.bc-evs')) {
-    const evs = $$('.bc-ev', box), more = $('.bc-more', box);
-    evs.forEach(e => e.hidden = false); more.hidden = true;
+    const cell = box.closest('.bc-cell'), evs = $$('.bc-ev', box), more = $('.bc-more', box);
+    evs.forEach(e => e.hidden = false); more.hidden = true; cell.removeAttribute('data-fit');
+    if (!evs.length) continue;
+    const over = () => evs[evs.length - 1].getBoundingClientRect().bottom > box.getBoundingClientRect().bottom + 0.5;
+    for (let lvl = 1; lvl <= 6 && over(); lvl++) cell.dataset.fit = lvl;
+    if (!over()) continue;
     const lim = box.getBoundingClientRect().bottom + 0.5;
-    if (!evs.length || evs[evs.length - 1].getBoundingClientRect().bottom <= lim) continue;
     let n = evs.length;
     const fits = () => { more.hidden = false; more.textContent = `+${evs.length - n} más`; return more.getBoundingClientRect().bottom <= lim; };
     while (n > 0) { n--; evs[n].hidden = true; const last = n ? evs[n - 1].getBoundingClientRect().bottom <= lim : true; if (last && fits()) break; }

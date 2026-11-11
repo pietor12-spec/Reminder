@@ -1072,3 +1072,30 @@ button.alarm-place { color: var(--brand-2); display: inline-flex; align-items: c
 .map-actions .btn { flex: 1; text-align: center; text-decoration: none; justify-content: center; }
 @media (max-width: 600px) { #mapBox { padding: 12px; align-items: end; } .map-frame { height: 52vh; } .map-actions { flex-direction: column; } }
 .map-actions .btn.ghost { color: var(--text); border: 1px solid var(--border); }
+
+/* Calendario web: casillas con muchas citas se compactan para que se vean todas */
+@media (min-width: 900px) {
+  .bc-cell[data-fit] { gap: 2px; padding-bottom: 2px; }
+  .bc-cell[data-fit] .bc-num { height: 20px; }
+  .bc-cell[data-fit="1"] .bc-evs { gap: 2px; }
+  .bc-cell[data-fit="1"] .bc-ev { font-size: 11px; line-height: 14px; padding: 1px 5px; }
+  .bc-cell[data-fit="2"] .bc-evs { gap: 1px; }
+  .bc-cell[data-fit="2"] .bc-ev { font-size: 10.5px; line-height: 13px; padding: 0 5px; border-radius: 4px; }
+  .bc-cell[data-fit="3"] .bc-evs, .bc-cell[data-fit="4"] .bc-evs { gap: 1px; }
+  .bc-cell[data-fit="3"] .bc-ev, .bc-cell[data-fit="4"] .bc-ev { font-size: 10px; line-height: 12px; padding: 0 4px; border-radius: 4px; gap: 4px; border-left-width: 2px; }
+  .bc-cell[data-fit="3"] .bc-num, .bc-cell[data-fit="4"] .bc-num { height: 17px; font-size: 12px; }
+  .bc-cell[data-fit="4"] { padding-top: 3px; }
+  .bc-cell[data-fit="4"] .bc-ev { font-size: 9.5px; line-height: 11px; }
+  .bc-cell[data-fit="4"] .bc-ev b { display: none; }
+  .bc-cell.today[data-fit="3"] .bc-num, .bc-cell.today[data-fit="4"] .bc-num { font-size: 14px; }
+}
+@media (min-width: 900px) {
+  .bc-cell[data-fit="5"] .bc-evs, .bc-cell[data-fit="6"] .bc-evs { display: grid; grid-template-columns: 1fr 1fr; gap: 1px 2px; align-content: start; }
+  .bc-cell[data-fit="5"], .bc-cell[data-fit="6"] { padding-top: 3px; gap: 1px; }
+  .bc-cell[data-fit="5"] .bc-num, .bc-cell[data-fit="6"] .bc-num { height: 16px; font-size: 11.5px; }
+  .bc-cell[data-fit="5"] .bc-ev { font-size: 10px; line-height: 12px; padding: 0 3px; border-radius: 3px; gap: 3px; border-left-width: 2px; }
+  .bc-cell[data-fit="5"] .bc-ev b { display: none; }
+  .bc-cell[data-fit="6"] .bc-ev { font-size: 9px; line-height: 10px; padding: 0 3px; border-radius: 3px; gap: 2px; border-left-width: 2px; }
+  .bc-cell[data-fit="6"] .bc-ev b { display: none; }
+  .bc-cell[data-fit] .bc-more { grid-column: 1 / -1; }
+}
