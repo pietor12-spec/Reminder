@@ -124,12 +124,17 @@ function load() {
    Así dos dispositivos pueden fusionar sus datos sin pisarse. */
 let baseline = new Map();
 const sig = r => { const { updatedAt, ...rest } = r; return JSON.stringify(rest); };
-function setBaseline() { baseline = new Map(state.reminders.map(r => [r.id, { s: sig(r), ev: r.calEventId }])); }
+// Campos que cambia la app sola (avisos, Google Calendar): no cuentan como cambio tuyo al sincronizar
+const AUTO_FIELDS = new Set(['updatedAt', 'editedAt', 'firedAt', 'snoozeUntil', 'calSig', 'calEventId', 'inCal']);
+const usig = r => JSON.stringify(Object.keys(r).filter(k => !AUTO_FIELDS.has(k)).sort().map(k => [k, r[k]]));
+function setBaseline() { baseline = new Map(state.reminders.map(r => [r.id, { s: sig(r), u: usig(r), ev: r.calEventId }])); }
 function stamp() {
   const now = Date.now(), ids = new Set();
   for (const r of state.reminders) {
     ids.add(r.id);
-    if (baseline.get(r.id)?.s !== sig(r)) { r.updatedAt = now; delete state.tombstones[r.id]; }
+    const b = baseline.get(r.id);
+    if (b?.s !== sig(r)) { r.updatedAt = now; delete state.tombstones[r.id]; }
+    if (b && b.u !== usig(r)) r.editedAt = now; // cambio hecho por ti (marcar, editar, posponer…)
     if (!baseline.has(r.id) && r.calEventId) state.calTrash = state.calTrash.filter(x => x !== r.calEventId);
   }
   for (const [id, b] of baseline) if (!ids.has(id)) { state.tombstones[id] = now; if (b.ev) state.calTrash.push(b.ev); }
@@ -1761,8 +1766,16 @@ const cloud = (() => {
     for (const [id, t] of Object.entries(state.tombstones)) tomb[id] = Math.max(tomb[id] || 0, t);
     const map = new Map();
     const ts = r => r.updatedAt || r.createdAt || 0;
+    // Gana el último cambio hecho por la persona; si no se sabe, gana «hecho» y, en los repetidos, la fecha más adelantada
+    const ed = r => r.editedAt || 0;
+    const wins = (a, b) => {
+      if (ed(a) !== ed(b)) return ed(a) > ed(b);
+      if (!!a.done !== !!b.done) return !!a.done;
+      if (a.repeat && a.repeat !== 'none' && a.due !== b.due) return a.due > b.due;
+      return ts(a) > ts(b);
+    };
     for (const r of (remote.reminders || [])) if (r && r.id) map.set(r.id, r);
-    for (const r of state.reminders) { const ex = map.get(r.id); if (!ex || ts(r) > ts(ex)) map.set(r.id, r); }
+    for (const r of state.reminders) { const ex = map.get(r.id); if (!ex || wins(r, ex)) map.set(r.id, r); }
     for (const [id, r] of map) if (tomb[id] && tomb[id] >= ts(r)) {
       if (r.calEventId && state.reminders.some(x => x.id === id)) state.calTrash.push(r.calEventId);
       map.delete(id);
@@ -1854,8 +1867,9 @@ const cloud = (() => {
   function refreshIfNeeded() {
     if (!auth.connected || valid() || auth.needsReconnect || !navigator.onLine) return false;
     if (document.body.classList.contains('sheet-open')) return false;
-    let tried = false; try { tried = sessionStorage.getItem('reminder.silent') === '1'; sessionStorage.setItem('reminder.silent', '1'); } catch (e) { tried = true; }
-    if (tried) return false;
+    // Renueva el acceso en silencio; como mucho un intento cada 10 minutos (evita bucles)
+    let last = 0; try { last = +localStorage.getItem('reminder.silentAt') || 0; localStorage.setItem('reminder.silentAt', String(Date.now())); } catch (e) { return false; }
+    if (Date.now() - last < 10 * MIN) return false;
     signIn(true); return true;
   }
   function schedule() { if (!connected()) return; clearTimeout(timer); timer = setTimeout(sync, 1500); }
@@ -1891,7 +1905,7 @@ const cloud = (() => {
     </div>`;
   }
 
-  return { boot, sync, schedule, refreshIfNeeded, signIn, signOut, connected, settingsCard, status: () => status };
+  return { boot, sync, schedule, refreshIfNeeded, signIn, signOut, connected, settingsCard, status: () => status, needsReconnect: () => !!(auth.connected && auth.needsReconnect) };
 })();
 
 /* ---------- Arranque ---------- */
@@ -1906,8 +1920,9 @@ function boot() {
   setInterval(checkAlarms, 15000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { if (cloud.refreshIfNeeded()) return; checkAlarms(); render(); cloud.sync(); } });
   window.addEventListener('online', () => cloud.sync());
-  setInterval(() => { if (!document.hidden) cloud.sync(); }, 60000);
+  setInterval(() => { if (!document.hidden) { if (cloud.refreshIfNeeded()) return; cloud.sync(); } }, 60000);
   cloud.sync();
+  if (cloud.needsReconnect()) setTimeout(() => toast('Este dispositivo no está sincronizando', 'Entra en Ajustes y pulsa «Reconectar».'), 3000);
   ['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, unlockAudio, { once: true, passive: true }));
 
   // Pantalla de carga: 2,6 s exactos
