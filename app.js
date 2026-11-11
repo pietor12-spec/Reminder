@@ -1069,7 +1069,7 @@ function renderSettings() {
     if (installEvt) installRow = `<div class="row"><span class="rl"><b>Instalar Reminder</b><small>Como una app, con su icono</small></span><button class="btn primary" data-set="install">Instalar</button></div>`;
     else if (isIOS) installRow = `<div class="row"><span class="rl"><b>Instalar en iPhone</b><small>Pulsa Compartir ⎋ y luego «Añadir a pantalla de inicio»</small></span></div>`;
     else installRow = `<div class="row"><span class="rl"><b>Instalar</b><small>En el menú del navegador: «Instalar app» o «Añadir a pantalla de inicio»</small></span></div>`;
-  } else installRow = `<div class="row"><span class="rl"><b>App instalada</b><small>Estás usando Reminder como app</small></span><span style="color:var(--c-casa)">${ICON.check}</span></div>`;
+  } else installRow = `<div class="row"><span class="rl"><b>App instalada</b><small>Estás usando Reminder como app</small></span><span style="color:var(--ok)">${ICON.check}</span></div>`;
 
   $('#view-settings').innerHTML = `<div class="settings">
     <h1>Ajustes</h1>
@@ -1081,7 +1081,7 @@ function renderSettings() {
     ${cloud.settingsCard()}
     <div class="card">
       <h4>Calendario</h4>
-      ${cloud.connected() ? `<div class="row"><span class="rl"><b>Google Calendar</b><small>Conectado: los recordatorios se crean, cambian y borran solos, con su aviso</small></span><span style="color:var(--c-casa)">${ICON.check}</span></div>
+      ${cloud.connected() ? `<div class="row"><span class="rl"><b>Google Calendar</b><small>Conectado: los recordatorios se crean, cambian y borran solos, con su aviso</small></span><span style="color:var(--ok)">${ICON.check}</span></div>
       ${tog('autoCal', 'Añadir siempre a Google Calendar', 'Activado por defecto en cada recordatorio nuevo')}
       <div class="row"><span class="rl"><b>Pendientes antiguos</b><small>Envía al calendario los que aún no están</small></span><button class="btn" data-set="calAll">Añadir</button></div>`
       : `<div class="row" style="flex-wrap:wrap"><span class="rl"><b>Mi calendario</b><small>Dónde se añaden tus recordatorios</small></span>${seg('calProvider', [['google', 'Google'], ['apple', 'Apple'], ['outlook', 'Outlook']])}</div>
@@ -1673,7 +1673,7 @@ const cloud = (() => {
   const AKEY = 'reminder.auth';
   const FILE = 'reminder-data.json';
   const CAL = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
-  const GCOLOR = { personal: '6', trabajo: '7', casa: '10', salud: '4', finanzas: '9', otros: '8' };
+  const GCOLOR = { personal: '6', trabajo: '7', casa: '9', salud: '4', finanzas: '10', otros: '8' };
   let auth = {};
   try { auth = JSON.parse(localStorage.getItem(AKEY)) || {}; } catch (e) { }
   let status = 'idle', lastError = '', busy = false, again = false, timer = null;
@@ -1791,7 +1791,7 @@ const cloud = (() => {
 
   /* --- Calendar: un evento por recordatorio, con su id fijo para no duplicar --- */
   const evId = id => 'rmd' + [...id].map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join('');
-  const calSig = r => JSON.stringify(['v3', r.dayBefore !== false, r.place || '', r.title, r.notes || '', r.repeat || 'none', r.alert || 0, r.cat, !!r.done,
+  const calSig = r => JSON.stringify(['v4', r.dayBefore !== false, r.place || '', r.title, r.notes || '', r.repeat || 'none', r.alert || 0, r.cat, !!r.done,
     (r.repeat && r.repeat !== 'none') ? hm(new Date(calDue(r))) + '|' + r.anchorDay : r.due]);
   function calDue(r) { return r.repeat && r.repeat !== 'none' && r.baseDue != null ? r.baseDue : r.due; }
   function localISO(ms) { const d = new Date(ms); return `${ymd(d)}T${hm(d)}:00`; }

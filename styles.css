@@ -14,9 +14,10 @@
 
   --c-personal: #F5A524;
   --c-trabajo: #1FB3C9;
-  --c-casa: #12B886;
+  --c-casa: #3B82F6;
   --c-salud: #F25F7A;
-  --c-finanzas: #3B82F6;
+  --c-finanzas: #12B886;
+  --ok: #12B886;
   --c-otros: #94A3B8;
 }
 
@@ -265,7 +266,7 @@ main { max-width: 760px; margin: 0 auto; padding: 4px 16px calc(40px + var(--saf
   position: absolute; inset: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 20px;
   font-weight: 700; font-size: 13px; color: #fff;
 }
-.item-wrap .swipe-bg.done { background: var(--c-casa); }
+.item-wrap .swipe-bg.done { background: var(--ok); }
 .item-wrap .swipe-bg.del { background: var(--overdue); justify-content: flex-end; }
 .item {
   position: relative; display: flex; align-items: center; gap: 12px;
@@ -569,7 +570,7 @@ button.stat:active { transform: scale(.97); }
 .missing { position: absolute; right: 18px; top: calc(100% - 4px); font-size: 11.5px; font-weight: 700; color: var(--overdue); }
 .field input.need { border-color: color-mix(in srgb, var(--overdue) 55%, transparent); border-style: dashed; }
 .voice-status { margin-top: 8px; padding: 8px 12px; border-radius: 12px; font-size: 13px; font-weight: 700; }
-.voice-status.ok { background: color-mix(in srgb, var(--c-casa) 16%, transparent); color: var(--c-casa); }
+.voice-status.ok { background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok); }
 .voice-status.warn { background: color-mix(in srgb, var(--overdue) 14%, transparent); color: var(--overdue); }
 
 /* Ventanas de aviso */
@@ -624,7 +625,7 @@ button.stat:active { transform: scale(.97); }
 .paste summary { cursor: pointer; color: var(--accent-ink); font-weight: 700; font-size: 14px; }
 .paste textarea { width: 100%; margin: 10px 0; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); resize: vertical; font: inherit; font-size: 14px; }
 .paste .btn { width: 100%; }
-.save-result { margin-top: 14px; padding: 12px 14px; border-radius: 14px; background: color-mix(in srgb, var(--c-casa) 14%, transparent); font-size: 14px; }
+.save-result { margin-top: 14px; padding: 12px 14px; border-radius: 14px; background: color-mix(in srgb, var(--ok) 14%, transparent); font-size: 14px; }
 .save-result.warn { background: color-mix(in srgb, var(--overdue) 14%, transparent); }
 .save-result span { color: var(--overdue); font-weight: 600; font-size: 13px; }
 .save-result ul { margin: 6px 0 0; padding-left: 18px; color: var(--muted); font-size: 13px; }
